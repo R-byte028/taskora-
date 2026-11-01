@@ -1,39 +1,190 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
-import {Activity,ArrowDownLeft,ArrowUpRight,Bell,BriefcaseBusiness,Check,ChevronDown,Clock3,CreditCard,FileText,LayoutDashboard,Plus,Search,Settings,Sparkles,Wallet,X,Zap,Copy,ExternalLink,CheckCircle2} from "lucide-react";
 
-type Status="Paid"|"Awaiting payment"|"In progress"|"Completed";
-type Job={id:number;title:string;client:string;amount:number;status:Status;description?:string};
-const seed:Job[]=[
-{id:1,title:"Brand identity design",client:"Maya Okafor",amount:185000,status:"Awaiting payment",description:"Brand identity package and final source files."},
-{id:2,title:"Landing page development",client:"Northstar Studio",amount:320000,status:"In progress",description:"Responsive landing page implementation."},
-{id:3,title:"Social media graphics",client:"Tobi Ventures",amount:75000,status:"Paid",description:"Social media graphics package."},
-{id:4,title:"Product photography",client:"The Good Market",amount:120000,status:"Paid",description:"Product photography session and edited images."},
-{id:5,title:"Business profile design",client:"Kora Foods",amount:95000,status:"Completed",description:"Business profile layout and print-ready export."}
-];
-const money=(n:number)=>new Intl.NumberFormat("en-NG",{style:"currency",currency:"NGN",maximumFractionDigits:0}).format(n);
-export default function Dashboard(){
-const [jobs,setJobs]=useState<Job[]>(seed),[open,setOpen]=useState(false),[requestOpen,setRequestOpen]=useState(false),[toast,setToast]=useState(""),[nav,setNav]=useState("Overview"),[link,setLink]=useState(""),[selected,setSelected]=useState("5"),[requestNote,setRequestNote]=useState(""),[form,setForm]=useState({title:"",client:"",amount:"",description:""});
-useEffect(()=>{try{const saved=localStorage.getItem("taskora-jobs");if(saved)setJobs(JSON.parse(saved));}catch{}},[]);
-useEffect(()=>{try{localStorage.setItem("taskora-jobs",JSON.stringify(jobs));}catch{}},[jobs]);
-const paid=useMemo(()=>jobs.filter(j=>j.status==="Paid").reduce((s,j)=>s+j.amount,0),[jobs]);
-const pending=useMemo(()=>jobs.filter(j=>j.status==="Awaiting payment").reduce((s,j)=>s+j.amount,0),[jobs]);
-function notify(s:string){setToast(s);window.setTimeout(()=>setToast(""),3000)}
-function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const amount=Number(form.amount);if(!form.title.trim()||!form.client.trim()||amount<1)return;setJobs(v=>[{id:Date.now(),title:form.title.trim(),client:form.client.trim(),amount,status:"In progress",description:form.description},...v]);setForm({title:"",client:"",amount:"",description:""});setOpen(false);notify("Job added to your workspace.");}
-function markComplete(id:number){setJobs(v=>v.map(j=>j.id===id?{...j,status:"Completed"}:j));notify("Job marked as completed. You can now prepare its payment request.");}
-function makeRequest(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const job=jobs.find(j=>String(j.id)===selected);if(!job)return;const note=requestNote.trim()||job.description||"Work completed as agreed.";const params=new URLSearchParams({client:job.client,title:job.title,amount:String(job.amount),note,ref:"TSK-"+job.id});const url=window.location.origin+"/pay?"+params.toString();setJobs(v=>v.map(j=>j.id===job.id?{...j,status:"Awaiting payment",description:note}:j));setLink(url);setRequestOpen(false);setRequestNote("");notify("Payment request prepared. Copy the client link to share.");}
-async function copyLink(){try{await navigator.clipboard.writeText(link);notify("Payment link copied.");}catch{notify("Copy isn't available here. Select and copy the link below.");}}
-const navs=[["Overview",LayoutDashboard],["My jobs",BriefcaseBusiness],["Payments",CreditCard],["Invoices",FileText]] as const;
-return <div className="app"><aside className="side"><div className="brand"><div className="mark">t.</div>taskora</div><p className="label">WORKSPACE</p><nav className="nav">{navs.map(([name,Icon])=><button key={name} className={nav===name?"active":""} onClick={()=>{setNav(name);if(name!=="Overview")notify(name+" workspace view is next on the roadmap.")}}><Icon size={17}/>{name}</button>)}</nav><p className="label" style={{marginTop:35}}>PREFERENCES</p><nav className="nav"><button onClick={()=>notify("Settings are coming soon.")}><Settings size={17}/>Settings</button></nav><div className="bottom"><div className="help"><strong>Need a hand?</strong><p>Prepare a clear payment request when a job is complete.</p><button onClick={()=>setRequestOpen(true)}>Create a request ↗</button></div><div className="profile"><div className="avatar">ZR</div><div><b>Your workspace</b><div className="muted">Starter account</div></div></div></div></aside>
-<main className="main"><header className="top"><div>Workspace　/　<b style={{color:"#26332c"}}>{nav}</b></div><div className="actions"><span className="pill">Taskora workspace</span><button className="icon" aria-label="Search" onClick={()=>notify("Search is coming soon.")}><Search size={16}/></button><button className="icon" aria-label="Notifications" onClick={()=>notify("You're all caught up.")}><Bell size={16}/></button></div></header>
-<section className="welcome"><div><p className="eyebrow">YOUR WORK, IN MOTION</p><h1>Good to have you back 👋</h1><p className="sub">Keep your jobs moving and your payment requests organised.</p></div><button className="primary" onClick={()=>setOpen(true)}><Plus size={16}/> Create a job</button></section>
-<section className="stats">{[{name:"Total earnings",value:money(paid),foot:"From paid jobs · Sample workspace",icon:Wallet},{name:"Awaiting payment",value:money(pending),foot:"Across "+jobs.filter(j=>j.status==="Awaiting payment").length+" request(s)",icon:Clock3},{name:"Active jobs",value:String(jobs.filter(j=>j.status==="In progress").length).padStart(2,"0"),foot:"Jobs currently in progress",icon:BriefcaseBusiness},{name:"All jobs",value:String(jobs.length).padStart(2,"0"),foot:"Across your workspace",icon:Activity}].map(({name,value,foot,icon:Icon})=><article className="card" key={name}><div className="stat-top"><span>{name}</span><Icon size={17}/></div><div className="stat-value">{value}</div><div className="stat-foot">{foot}</div></article>)}</section>
-<div className="content"><div><section className="panel"><div className="panel-head"><div><h2 className="panel-title">Your jobs</h2><p className="panel-sub">Mark finished work complete, then prepare a request.</p></div><button className="text-btn" onClick={()=>setOpen(true)}>+ Add job</button></div>{jobs.slice(0,7).map(j=><div className="job" key={j.id}><div className="job-main"><div className="job-icon"><BriefcaseBusiness size={16}/></div><div style={{minWidth:0}}><div className="job-name">{j.title}</div><div className="job-client">{j.client}</div></div></div><div className="amount">{money(j.amount)}</div><div className="job-actions"><span className={"status "+(j.status==="Paid"?"paid":j.status==="In progress"?"progress":j.status==="Completed"?"complete":"pending")}>{j.status}</span>{j.status==="In progress"&&<button className="mini-action" onClick={()=>markComplete(j.id)}>Mark done</button>}{j.status==="Completed"&&<button className="mini-action" onClick={()=>{setSelected(String(j.id));setRequestOpen(true)}}>Request payment</button>}</div></div>)}</section>
-<section className="panel" style={{marginTop:18}}><div className="panel-head"><div><h2 className="panel-title">Earnings overview</h2><p className="panel-sub">Illustrative activity — sample data</p></div><span className="pill">Recent months <ChevronDown size={11} style={{display:"inline"}}/></span></div><div className="chart">{[35,54,43,72,58,88,67].map((h,i)=><div className="bar-col" key={i}><div className={"bar "+(i<3?"muted":"")} style={{height:h+"%"}}/><small>{["May","Jun","Jul","Aug","Sep","Oct","Nov"][i]}</small></div>)}</div></section></div>
-<div><section className="assistant"><span className="assistant-label"><Sparkles size={13} style={{display:"inline"}}/> TASKORA PAYMENT ASSISTANT</span><h2>Finished the work? Prepare the payment request.</h2><p>Choose a completed job, add a short note and create a client-facing request link.</p><button onClick={()=>{if(jobs.some(j=>j.status==="Completed")){setSelected(String(jobs.find(j=>j.status==="Completed")!.id));setRequestOpen(true)}else notify("Mark a job as complete first.")}}><Zap size={14} style={{display:"inline"}}/> Prepare payment request　<ArrowUpRight size={13} style={{display:"inline"}}/></button></section>
-<section className="panel activity"><div className="panel-head"><div><h2 className="panel-title">Payment workflow</h2><p className="panel-sub">A simple view of each stage</p></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Record the agreed job</b><span>Keep the client, service and amount together.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Mark the work complete</b><span>Only completed jobs can become requests.</span></div></div><div className="activity-row"><ArrowDownLeft size={16}/><div><b>Share a client request link</b><span>Client review page is available in preview mode.</span></div></div></section></div></div>
-<p style={{color:"#a1aaa2",fontSize:9,textAlign:"center",marginTop:28}}>Taskora build preview · Sample workspace data · NEAR payments are not enabled yet</p></main>
-{open&&<div className="modal-bg" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">WORKSPACE</p><h2>Create a new job</h2></div><button className="close" onClick={()=>setOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={submit}><div className="field"><label htmlFor="title">Job or service name</label><input id="title" required placeholder="e.g. Brand identity design" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div><div className="field"><label htmlFor="client">Client name</label><input id="client" required placeholder="Who is this work for?" value={form.client} onChange={e=>setForm({...form,client:e.target.value})}/></div><div className="field"><label htmlFor="amount">Agreed amount (NGN)</label><input id="amount" required min="1" type="number" placeholder="e.g. 85000" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/></div><div className="field"><label htmlFor="description">Work description (optional)</label><textarea id="description" placeholder="Add a short note..." value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div><div className="form-actions"><button type="button" className="secondary" onClick={()=>setOpen(false)}>Cancel</button><button type="submit" className="primary"><Plus size={14}/> Add job</button></div></form></div></div>}
-{requestOpen&&<div className="modal-bg" onMouseDown={e=>{if(e.target===e.currentTarget)setRequestOpen(false)}}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">TASKORA ASSISTANT</p><h2>Prepare a payment request</h2></div><button className="close" onClick={()=>setRequestOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={makeRequest}><div className="field"><label htmlFor="request-job">Completed job</label><select id="request-job" value={selected} onChange={e=>setSelected(e.target.value)}>{jobs.filter(j=>j.status==="Completed"||j.status==="Awaiting payment").map(j=><option key={j.id} value={j.id}>{j.title} — {j.client} ({money(j.amount)})</option>)}</select></div><div className="field"><label htmlFor="request-note">Work summary for your client</label><textarea id="request-note" placeholder="Summarise what was delivered..." value={requestNote} onChange={e=>setRequestNote(e.target.value)}/></div><p className="form-hint">Taskora organises the details you provide. AI-generated suggestions and payment processing will be added in later milestones.</p><div className="form-actions"><button type="button" className="secondary" onClick={()=>setRequestOpen(false)}>Cancel</button><button type="submit" className="primary"><FileText size={14}/> Generate request link</button></div></form></div></div>}
-{link&&<div className="modal-bg" onMouseDown={e=>{if(e.target===e.currentTarget)setLink("")}}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">REQUEST READY</p><h2>Share with your client</h2></div><button className="close" onClick={()=>setLink("")} aria-label="Close"><X size={16}/></button></div><p className="form-hint">This preview link contains the request details. It does not collect money or initiate a transaction.</p><div className="share-link">{link}</div><div className="form-actions"><button className="secondary" onClick={()=>window.open(link,"_blank","noopener,noreferrer")}><ExternalLink size={14}/> Preview page</button><button className="primary" onClick={copyLink}><Copy size={14}/> Copy link</button></div></div></div>}
-{toast&&<div className="toast">{toast}</div>}</div>}
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Activity, ArrowDownLeft, ArrowUpRight, Bell, BriefcaseBusiness, CheckCircle2, Clock3, CreditCard, FileText, LayoutDashboard, LogOut, Plus, Search, Settings, Sparkles, Wallet, X, Zap } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { Tables } from "@/lib/supabase/database.types";
+
+type JobRow = Tables<"jobs">;
+type ClientRow = Tables<"clients">;
+type JobStatus = "in_progress" | "completed" | "cancelled";
+type JobView = JobRow & { client_name: string };
+
+const money = (amount: number, currency = "NGN") =>
+  new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+
+export default function Dashboard() {
+  const supabase = useMemo(() => createClient(), []);
+  const [jobs, setJobs] = useState<JobView[]>([]);
+  const [userEmail, setUserEmail] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [toast, setToast] = useState("");
+  const [nav, setNav] = useState("Overview");
+  const [selected, setSelected] = useState("");
+  const [requestNote, setRequestNote] = useState("");
+  const [form, setForm] = useState({ title: "", client: "", amount: "", description: "" });
+
+  const notify = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 3200);
+  };
+
+  const loadJobs = useCallback(async () => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      window.location.replace("/login");
+      return;
+    }
+    setUserEmail(user.email ?? "");
+    const [{ data: jobRows, error: jobsError }, { data: clients, error: clientsError }] = await Promise.all([
+      supabase.from("jobs").select("*").order("created_at", { ascending: false }),
+      supabase.from("clients").select("*").order("created_at", { ascending: false }),
+    ]);
+    if (jobsError || clientsError) {
+      notify("Couldn't load your workspace. Please refresh and try again.");
+      setLoading(false);
+      return;
+    }
+    const clientMap = new Map((clients ?? []).map((client: ClientRow) => [client.id, client.name]));
+    setJobs((jobRows ?? []).map((job: JobRow) => ({
+      ...job,
+      client_name: job.client_id ? clientMap.get(job.client_id) ?? "Client" : "No client",
+    })));
+    setLoading(false);
+  }, [supabase]);
+
+  useEffect(() => { void loadJobs(); }, [loadJobs]);
+
+  const paid = 0; // Payment confirmation is not implemented yet.
+  const pending = useMemo(() => jobs.filter((job) => job.status === "completed").reduce((sum, job) => sum + Number(job.amount), 0), [jobs]);
+  const activeCount = jobs.filter((job) => job.status === "in_progress").length;
+
+  async function submitJob(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const amount = Number(form.amount);
+    if (!form.title.trim() || !form.client.trim() || !Number.isFinite(amount) || amount <= 0) return;
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.replace("/login"); return; }
+
+    const { data: client, error: clientError } = await supabase
+      .from("clients")
+      .insert({ user_id: user.id, name: form.client.trim() })
+      .select("*")
+      .single();
+
+    if (clientError || !client) {
+      notify(clientError?.message ?? "Couldn't save the client.");
+      setSaving(false);
+      return;
+    }
+
+    const { error: jobError } = await supabase.from("jobs").insert({
+      user_id: user.id,
+      client_id: client.id,
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      amount,
+      currency: "NGN",
+      status: "in_progress",
+    });
+
+    if (jobError) {
+      await supabase.from("clients").delete().eq("id", client.id);
+      notify(jobError.message);
+      setSaving(false);
+      return;
+    }
+
+    setForm({ title: "", client: "", amount: "", description: "" });
+    setOpen(false);
+    setSaving(false);
+    notify("Job saved to your Taskora account.");
+    await loadJobs();
+  }
+
+  async function markComplete(job: JobView) {
+    const { error } = await supabase.from("jobs").update({
+      status: "completed" satisfies JobStatus,
+      completed_at: new Date().toISOString(),
+    }).eq("id", job.id);
+    if (error) { notify(error.message); return; }
+    notify("Job marked as completed.");
+    await loadJobs();
+  }
+
+  async function savePaymentRequest(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const job = jobs.find((item) => item.id === selected);
+    if (!job || !job.client_id) { notify("This job needs a client record first."); return; }
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.replace("/login"); return; }
+    const summary = requestNote.trim() || job.description || "Work completed as agreed.";
+    const { error } = await supabase.from("payment_requests").insert({
+      user_id: user.id,
+      job_id: job.id,
+      client_id: job.client_id,
+      amount: Number(job.amount),
+      currency: job.currency,
+      work_summary: summary,
+      status: "draft",
+    });
+    setSaving(false);
+    if (error) { notify(error.message); return; }
+    setRequestOpen(false);
+    setRequestNote("");
+    notify("Payment request saved securely. Client sharing is the next milestone.");
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    window.location.replace("/login");
+  }
+
+  const navs = [["Overview", LayoutDashboard], ["My jobs", BriefcaseBusiness], ["Payments", CreditCard], ["Invoices", FileText]] as const;
+
+  return <div className="app">
+    <aside className="side">
+      <div className="brand"><div className="mark">t.</div>taskora</div>
+      <p className="label">WORKSPACE</p>
+      <nav className="nav">{navs.map(([name, Icon]) => <button key={name} className={nav === name ? "active" : ""} onClick={() => { setNav(name); if (name !== "Overview") notify(name + " view is coming next."); }}><Icon size={17}/>{name}</button>)}</nav>
+      <p className="label" style={{ marginTop: 35 }}>PREFERENCES</p>
+      <nav className="nav"><button onClick={() => notify("Settings are coming soon.")}><Settings size={17}/>Settings</button></nav>
+      <div className="bottom">
+        <div className="help"><strong>Need a hand?</strong><p>Prepare a clear payment request when a job is complete.</p><button onClick={() => { const first = jobs.find((job) => job.status === "completed"); if (!first) { notify("Mark a job as complete first."); return; } setSelected(first.id); setRequestOpen(true); }}>Create a request ↗</button></div>
+        <div className="profile"><div className="avatar">T</div><div style={{ minWidth: 0, flex: 1 }}><b>{userEmail || "Your account"}</b><div className="muted">Taskora account</div></div><button className="icon" aria-label="Sign out" onClick={signOut}><LogOut size={15}/></button></div>
+      </div>
+    </aside>
+
+    <main className="main">
+      <header className="top"><div>Workspace　/　<b style={{ color: "#26332c" }}>{nav}</b></div><div className="actions"><span className="pill">Your private workspace</span><button className="icon" aria-label="Search" onClick={() => notify("Search is coming soon.")}><Search size={16}/></button><button className="icon" aria-label="Notifications" onClick={() => notify("You're all caught up.")}><Bell size={16}/></button></div></header>
+      <section className="welcome"><div><p className="eyebrow">YOUR WORK, IN MOTION</p><h1>Welcome to Taskora 👋</h1><p className="sub">Your jobs and client records are now saved to your account.</p></div><button className="primary" onClick={() => setOpen(true)}><Plus size={16}/> Create a job</button></section>
+      <section className="stats">
+        {[{ name: "Confirmed earnings", value: money(paid), foot: "No payment confirmations yet", icon: Wallet }, { name: "Completed job value", value: money(pending), foot: "Not necessarily paid", icon: Clock3 }, { name: "Active jobs", value: String(activeCount).padStart(2, "0"), foot: "Jobs currently in progress", icon: BriefcaseBusiness }, { name: "All jobs", value: String(jobs.length).padStart(2, "0"), foot: "Saved in your account", icon: Activity }].map(({ name, value, foot, icon: Icon }) => <article className="card" key={name}><div className="stat-top"><span>{name}</span><Icon size={17}/></div><div className="stat-value">{value}</div><div className="stat-foot">{foot}</div></article>)}
+      </section>
+
+      <div className="content">
+        <div>
+          <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Your jobs</h2><p className="panel-sub">Your saved client work, newest first.</p></div><button className="text-btn" onClick={() => setOpen(true)}>+ Add job</button></div>
+            {loading ? <p className="panel-sub">Loading your jobs…</p> : jobs.length === 0 ? <div className="empty-state"><BriefcaseBusiness size={24}/><b>No jobs yet</b><span>Create your first job to get started. Your records will be saved to your account.</span></div> : jobs.slice(0, 10).map((job) => <div className="job" key={job.id}><div className="job-main"><div className="job-icon"><BriefcaseBusiness size={16}/></div><div style={{ minWidth: 0 }}><div className="job-name">{job.title}</div><div className="job-client">{job.client_name}</div></div></div><div className="amount">{money(Number(job.amount), job.currency)}</div><div className="job-actions"><span className={"status " + (job.status === "completed" ? "complete" : job.status === "cancelled" ? "pending" : "progress")}>{job.status.replace("_", " ")}</span>{job.status === "in_progress" && <button className="mini-action" onClick={() => void markComplete(job)}>Mark done</button>}{job.status === "completed" && <button className="mini-action" onClick={() => { setSelected(job.id); setRequestOpen(true); }}>Request payment</button>}</div></div>)}
+          </section>
+          <section className="panel" style={{ marginTop: 18 }}><div className="panel-head"><div><h2 className="panel-title">Your account data</h2><p className="panel-sub">Records are stored in your private Taskora database.</p></div><span className="pill">Synced</span></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Account authentication</b><span>Managed by Supabase Auth.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Private job records</b><span>Protected by owner-only Row Level Security.</span></div></div></section>
+        </div>
+        <div>
+          <section className="assistant"><span className="assistant-label"><Sparkles size={13} style={{ display: "inline" }}/> TASKORA PAYMENT ASSISTANT</span><h2>Finished the work? Prepare the payment request.</h2><p>Choose a completed job and save a structured payment request to your account.</p><button onClick={() => { const first = jobs.find((job) => job.status === "completed"); if (!first) { notify("Mark a job as complete first."); return; } setSelected(first.id); setRequestOpen(true); }}><Zap size={14} style={{ display: "inline" }}/> Prepare payment request　<ArrowUpRight size={13} style={{ display: "inline" }}/></button></section>
+          <section className="panel activity"><div className="panel-head"><div><h2 className="panel-title">Payment workflow</h2><p className="panel-sub">Your progress at a glance</p></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Record the agreed job</b><span>Saved to your Taskora database.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Mark the work complete</b><span>Completion is stored against the job.</span></div></div><div className="activity-row"><ArrowDownLeft size={16}/><div><b>Prepare a payment request</b><span>Saved privately; client sharing comes next.</span></div></div></section>
+        </div>
+      </div>
+      <p style={{ color: "#a1aaa2", fontSize: 9, textAlign: "center", marginTop: 28 }}>Taskora · Private account workspace · NEAR payments are not enabled yet</p>
+    </main>
+
+    {open && <div className="modal-bg" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">WORKSPACE</p><h2>Create a new job</h2></div><button className="close" onClick={() => setOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={submitJob}><div className="field"><label htmlFor="title">Job or service name</label><input id="title" required maxLength={180} placeholder="e.g. Brand identity design" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })}/></div><div className="field"><label htmlFor="client">Client name</label><input id="client" required maxLength={160} placeholder="Who is this work for?" value={form.client} onChange={(event) => setForm({ ...form, client: event.target.value })}/></div><div className="field"><label htmlFor="amount">Agreed amount (NGN)</label><input id="amount" required min="1" step="0.01" type="number" placeholder="e.g. 85000" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })}/></div><div className="field"><label htmlFor="description">Work description (optional)</label><textarea id="description" maxLength={4000} placeholder="Add a short note..." value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })}/></div><div className="form-actions"><button type="button" className="secondary" onClick={() => setOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving ? "Saving…" : <><Plus size={14}/> Add job</>}</button></div></form></div></div>}
+
+    {requestOpen && <div className="modal-bg" onMouseDown={(event) => { if (event.target === event.currentTarget) setRequestOpen(false); }}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">TASKORA ASSISTANT</p><h2>Prepare a payment request</h2></div><button className="close" onClick={() => setRequestOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={savePaymentRequest}><div className="field"><label htmlFor="request-job">Completed job</label><select id="request-job" required value={selected} onChange={(event) => setSelected(event.target.value)}>{jobs.filter((job) => job.status === "completed").map((job) => <option key={job.id} value={job.id}>{job.title} — {job.client_name} ({money(Number(job.amount), job.currency)})</option>)}</select></div><div className="field"><label htmlFor="request-note">Work summary for your client</label><textarea id="request-note" maxLength={4000} placeholder="Summarise what was delivered..." value={requestNote} onChange={(event) => setRequestNote(event.target.value)}/></div><p className="form-hint">This saves a private draft. Secure client links and payment processing will be implemented separately.</p><div className="form-actions"><button type="button" className="secondary" onClick={() => setRequestOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={saving || !selected}>{saving ? "Saving…" : <><FileText size={14}/> Save request</>}</button></div></form></div></div>}
+    {toast && <div className="toast">{toast}</div>}
+  </div>;
+}
