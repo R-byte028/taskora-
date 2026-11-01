@@ -38,3 +38,22 @@
 .back-link{display:inline-flex;align-items:center;gap:7px;color:#657c42;font-size:12px;font-weight:800;text-decoration:none;margin-top:18px}
 .client-footer{display:flex;justify-content:center;align-items:center;gap:6px;color:#a1aaa2;font-size:9px;margin:25px 0 0}
 @media(max-width:520px){.client-page{padding:18px 12px}.client-card{padding:22px 18px}.client-card h1{font-size:25px}.request-amount strong{font-size:28px}.job-actions{grid-column:1/-1;justify-content:flex-start;margin-left:48px}}
+
+/* Authentication and account-backed workspace */
+.auth-page{min-height:100vh;background:#f3f5ef;display:grid;place-items:center;padding:24px}
+.auth-card{width:min(100%,430px);background:#fff;border:1px solid #e8ebe3;border-radius:20px;padding:34px;box-shadow:0 18px 60px #1b2a1b0b}
+.auth-brand{display:flex;align-items:center;gap:10px;color:#17211d;text-decoration:none;font-size:22px;font-weight:900;letter-spacing:-1px;margin-bottom:42px}
+.auth-brand .mark{display:grid;place-items:center}
+.auth-card h1{font-size:29px;letter-spacing:-1px;margin:0}
+.auth-sub{font-size:12px;line-height:1.6;color:#879189;margin:10px 0 24px}
+.auth-submit{width:100%;justify-content:center;margin-top:5px}
+.auth-switch{text-align:center;color:#879189;font-size:11px;margin:20px 0}
+.auth-switch button{border:0;background:transparent;color:#637b36;font-size:11px;font-weight:800}
+.auth-legal{border-top:1px solid #eef0eb;padding-top:16px;color:#a0a8a1;font-size:9px;line-height:1.6;text-align:center}
+.auth-error,.auth-message{font-size:11px;line-height:1.5;margin:0;padding:10px 12px;border-radius:8px}
+.auth-error{color:#9b3f3f;background:#fff0f0}
+.auth-message{color:#426d4b;background:#eef8ef}
+.empty-state{display:flex;flex-direction:column;align-items:center;gap:9px;padding:35px 16px;text-align:center;color:#7e8b7f}
+.empty-state b{font-size:12px;color:#344138}
+.empty-state span{max-width:280px;font-size:10px;line-height:1.6}
+button:disabled{opacity:.65;cursor:not-allowed}
