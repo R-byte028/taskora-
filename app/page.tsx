@@ -526,7 +526,7 @@ export default function Dashboard() {
       </>}
 
       {nav === "Settings" && <>
-        <section className="welcome"><div><p className="eyebrow">ACCOUNT PREFERENCES</p><h1>Settings</h1><p className="sub">Manage your Taskora profile and account security.</p></div></section>
+        <section className="welcome"><div><p className="eyebrow">ACCOUNT PREFERENCES</p><h1>Settings</h1><p className="sub">Manage your Taskora profile and account security. <a href="/wallet" style={{ color: "var(--accent, #16a36a)", fontWeight: 600, marginLeft: 6 }}>Connect NEAR wallet ↗</a></p></div></section>
         <div className="settings-layout">
           <section className="panel">
             <div className="panel-head"><div><h2 className="panel-title">Profile information</h2><p className="panel-sub">These details are used to identify your workspace.</p></div></div>
