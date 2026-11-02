@@ -7,6 +7,8 @@ The Assistant uses two server-side routes:
 - `POST /api/assistant`: authenticated, structured read-only workspace tools.
 - `POST /api/assistant/chat`: authenticated natural-language chat through Vercel AI Gateway, with a bounded server-side tool-calling loop.
 
+- `GET /api/assistant/history`: returns the signed-in user's most recent conversation and up to 40 recent messages.
+
 Both routes authenticate with `auth.getUser()` and use the session-scoped Supabase server client. Database access remains subject to the existing Row Level Security policies.
 
 ## AI runtime
@@ -26,6 +28,13 @@ Do not commit an API key or paste it into chat. Configure it only as a server-si
 - `list_pending_payments`: returns up to 50 shared payment requests.
 
 The model can only call these three allow-listed tools. Tool arguments are parsed and validated server-side. The tools do not return client email addresses, phone numbers, wallet secrets, or payment-share tokens.
+
+## Conversation history
+
+- Conversations and messages are stored in `assistant_conversations` and `assistant_messages`.
+- Both tables have Row Level Security; ownership is tied to the authenticated user, including a composite foreign key between messages and conversations.
+- The history endpoint returns only the most recent conversation and the latest 40 messages. The chat endpoint stores each submitted user message and generated assistant reply.
+- The migration is committed to the feature branch but must be applied through the project's reviewed Supabase migration workflow before history works in the live database.
 
 ## Safety boundary
 
