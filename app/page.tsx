@@ -217,8 +217,8 @@ export default function Dashboard() {
     await loadJobs();
   }
   async function openRequestFor(job: JobView) {
-    if (!isCryptoAsset(job.currency)) {
-      notify("This older record uses a fiat denomination. Create a new crypto-denominated job first.");
+    if (job.currency !== "NEAR") {
+      notify("Client checkout currently supports NEAR testnet only. Create a NEAR-denominated job first.");
       return;
     }
     setSelected(job.id);
@@ -228,8 +228,8 @@ export default function Dashboard() {
   async function savePaymentRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const job = jobs.find((item) => item.id === selected);
-    if (!job || !job.client_id || !isCryptoAsset(job.currency)) {
-      notify("Choose a completed job with a supported crypto asset.");
+    if (!job || !job.client_id || job.currency !== "NEAR") {
+      notify("Choose a completed NEAR-denominated job. Client checkout currently supports NEAR testnet only.");
       return;
     }
     setSaving(true);
@@ -418,7 +418,8 @@ export default function Dashboard() {
         <div className="job-actions">
           <span className={"status " + (job.status === "completed" ? "complete" : job.status === "cancelled" ? "pending" : "progress")}>{job.status.replace("_", " ")}</span>
           {job.status === "in_progress" && <><button className="mini-action" onClick={() => void markComplete(job)}>Mark complete</button><button className="mini-action danger-action" onClick={() => void cancelJob(job)}>Cancel job</button></>}
-          {job.status === "completed" && isCryptoAsset(job.currency) && <button className="mini-action" onClick={() => void openRequestFor(job)}>Request payment</button>}
+          {job.status === "completed" && job.currency === "NEAR" && <button className="mini-action" onClick={() => void openRequestFor(job)}>Request payment</button>}
+          {job.status === "completed" && job.currency === "USDC" && <span className="subtle-note">NEAR testnet checkout only</span>}
         </div>
       </div>);
 
@@ -428,7 +429,8 @@ export default function Dashboard() {
         <div className="request-info"><b>{request.job_title}</b><span>{request.client_name} · {cryptoAmount(Number(request.amount), request.currency)}</span><small>{invoiceMode ? "Created " + dateLabel(request.created_at) : "Request created " + dateLabel(request.created_at)}</small></div>
         <div className="request-controls">
           <span className={"status " + (request.status === "shared" ? "complete" : request.status === "paid" ? "paid" : "pending")}>{request.status}</span>
-          {request.status === "draft" && isCryptoAsset(request.currency) && <button className="mini-action" disabled={saving} onClick={() => void shareDraft(request.id)}>Share link</button>}
+          {request.status === "draft" && request.currency === "NEAR" && <button className="mini-action" disabled={saving} onClick={() => void shareDraft(request.id)}>Share link</button>}
+          {request.status === "draft" && request.currency === "USDC" && <span className="subtle-note">USDC checkout is not enabled yet</span>}
           {request.status === "shared" && <button className="mini-action danger-action" onClick={() => void revokeShare(request.id)}>Revoke link</button>}
           {request.status === "shared" && <span className="subtle-note">Awaiting verified on-chain payment</span>}
           {!isCryptoAsset(request.currency) && <span className="subtle-note">Recreate this legacy request in crypto</span>}
@@ -487,7 +489,7 @@ export default function Dashboard() {
           </div>
           <div>
             <section className="assistant"><span className="assistant-label"><Sparkles size={13} style={{ display: "inline" }}/> TASKORA PAYMENT ASSISTANT</span><h2>Work completed? Get your crypto request ready.</h2><p>Taskora helps structure the payment details and create a secure link for your client.</p><button onClick={() => { const first = completedJobs.find((job) => isCryptoAsset(job.currency)); if (!first) { notify("Complete a crypto-denominated job first."); return; } void openRequestFor(first); }}><Zap size={14} style={{ display: "inline" }}/> Prepare payment request　<ArrowUpRight size={13} style={{ display: "inline" }}/></button></section>
-            <section className="panel activity"><div className="panel-head"><div><h2 className="panel-title">Payment workflow</h2><p className="panel-sub">Current product capabilities</p></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Record client work</b><span>Jobs and client details are saved privately.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Prepare a crypto request</b><span>Use USDC or NEAR as the requested asset.</span></div></div><div className="activity-row"><Clock3 size={16}/><div><b>On-chain settlement</b><span>Wallet payment and transaction verification are the next integration stage.</span></div></div></section>
+            <section className="panel activity"><div className="panel-head"><div><h2 className="panel-title">Payment workflow</h2><p className="panel-sub">Current product capabilities</p></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Record client work</b><span>Jobs and client details are saved privately.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Prepare a crypto request</b><span>Use USDC or NEAR as the requested asset.</span></div></div><div className="activity-row"><Clock3 size={16}/><div><b>NEAR testnet settlement</b><span>Eligible requests are marked paid only after server-side transaction verification.</span></div></div></section>
           </div>
         </div>
       </>}
@@ -501,8 +503,8 @@ export default function Dashboard() {
       {nav === "My Payments" && <>
         <section className="welcome"><div><p className="eyebrow">CRYPTO ACTIVITY</p><h1>My Payments</h1><p className="sub">Monitor payment requests and their settlement status.</p></div><button className="primary" onClick={()=>changePage("Invoices")}><FileText size={16}/> View invoices</button></section>
         <section className="stats compact-stats"><article className="card"><div className="stat-top"><span>Confirmed</span><CheckCircle2 size={17}/></div><div className="stat-value">{paidRequests.length}</div><div className="stat-foot">Verified payment records</div></article><article className="card"><div className="stat-top"><span>Awaiting payment</span><Clock3 size={17}/></div><div className="stat-value">{sharedRequests.length}</div><div className="stat-foot">Shared with clients</div></article><article className="card"><div className="stat-top"><span>Draft requests</span><FileText size={17}/></div><div className="stat-value">{paymentRequests.filter((r)=>r.status==="draft").length}</div><div className="stat-foot">Not yet shared</div></article></section>
-        <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Payment activity</h2><p className="panel-sub">A payment is not marked complete until on-chain verification is implemented.</p></div><span className="pill">Crypto only</span></div>{loading?<p className="panel-sub">Loading payment activity…</p>:requestRows(paymentRequests)}</section>
-        <div className="info-banner"><LockIconText /> Wallet connection and transaction verification are not live yet. Shared links are payment requests, not proof that funds have been received.</div>
+        <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Payment activity</h2><p className="panel-sub">Only payments confirmed by the server-side NEAR testnet verifier are marked paid.</p></div><span className="pill">Crypto only</span></div>{loading?<p className="panel-sub">Loading payment activity…</p>:requestRows(paymentRequests)}</section>
+        <div className="info-banner"><LockIconText /> NEAR testnet checkout is available for eligible requests. A request is marked paid only after server-side transaction verification.</div>
       </>}
 
 
@@ -569,7 +571,7 @@ export default function Dashboard() {
     {requestOpen && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget)setRequestOpen(false);}}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">TASKORA ASSISTANT</p><h2>Prepare a crypto invoice</h2></div><button className="close" onClick={()=>setRequestOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={savePaymentRequest}>
       <div className="field"><label htmlFor="request-job">Completed job</label><select id="request-job" required value={selected} onChange={(event)=>setSelected(event.target.value)}>{completedJobs.filter((job)=>isCryptoAsset(job.currency)).map((job)=><option key={job.id} value={job.id}>{job.title} — {job.client_name} ({cryptoAmount(Number(job.amount),job.currency)})</option>)}</select></div>
       <div className="field"><label htmlFor="request-note">Work summary for your client</label><textarea id="request-note" maxLength={4000} placeholder="Summarise what was delivered..." value={requestNote} onChange={(event)=>setRequestNote(event.target.value)}/></div>
-      <p className="form-hint">A private, expiring request link will be created. This is not a live payment checkout; wallet settlement and on-chain verification are still being integrated.</p>
+      <p className="form-hint">A private, expiring request link will be created. Eligible NEAR requests can be paid on testnet; the request is marked paid only after server-side verification.</p>
       <div className="form-actions"><button type="button" className="secondary" onClick={()=>setRequestOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={saving||!selected}>{saving?"Saving…":<><FileText size={14}/> Create invoice</>}</button></div>
     </form></div></div>}
     {toast && <div className="toast"><span>{toast}</span>{shareUrl&&<div className="toast-actions"><button type="button" onClick={()=>void navigator.clipboard.writeText(shareUrl)}><Copy size={12}/> Copy link</button><a href={shareUrl} target="_blank" rel="noreferrer">Preview</a></div>}</div>}
