@@ -75,7 +75,7 @@ Do not use the current build to collect real funds or share confidential client 
 1. A provider signs in and records a client job.
 2. The provider marks the work complete.
 3. Taskora prepares a structured payment request.
-4. The client reviews the request through a secure share link.
+4. The client reviews the request through a secure, expiring share link. The provider can revoke the link.
 5. A supported NEAR payment flow is added.
 6. Payment status changes only after authoritative transaction verification.
 
