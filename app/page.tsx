@@ -47,6 +47,7 @@ export default function Dashboard() {
   const [requestNote, setRequestNote] = useState("");
   const [shareUrl, setShareUrl] = useState("");
   const [assistantInput, setAssistantInput] = useState("");
+  const [assistantConversationId, setAssistantConversationId] = useState<string | null>(null);
   const [assistantMessages, setAssistantMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([
     { role: "assistant", content: "Hi! I can help you navigate your Taskora workspace and prepare payment requests from completed jobs. Try asking me to show completed jobs, check pending requests, or prepare an invoice." },
   ]);
@@ -89,6 +90,27 @@ export default function Dashboard() {
   }, [supabase]);
 
   useEffect(() => { void loadJobs(); }, [loadJobs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAssistantHistory() {
+      try {
+        const response = await fetch("/api/assistant/history", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json() as {
+          conversationId?: string | null;
+          messages?: { role: "assistant" | "user"; content: string }[];
+        };
+        if (cancelled) return;
+        setAssistantConversationId(result.conversationId ?? null);
+        if (result.messages?.length) setAssistantMessages(result.messages);
+      } catch {
+        // The chat remains usable if history is temporarily unavailable.
+      }
+    }
+    void loadAssistantHistory();
+    return () => { cancelled = true; };
+  }, []);
 
   const activeJobs = jobs.filter((job) => job.status === "in_progress");
   const completedJobs = jobs.filter((job) => job.status === "completed");
@@ -228,15 +250,15 @@ export default function Dashboard() {
   }
 
 
-  function sendAssistantMessage(event: React.FormEvent<HTMLFormElement>) {
+  async function sendAssistantMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const prompt = assistantInput.trim();
     if (!prompt) return;
     const lower = prompt.toLowerCase();
+    const previousMessages = assistantMessages.slice(-10);
     setAssistantMessages((items) => [...items, { role: "user", content: prompt }]);
     setAssistantInput("");
 
-    let reply = "";
     if (lower.includes("invoice") || lower.includes("payment request") || lower.includes("request payment")) {
       const match = completedJobs.find((job) =>
         isCryptoAsset(job.currency) &&
@@ -244,40 +266,57 @@ export default function Dashboard() {
           || (!lower.includes(" for ") && !lower.includes(" of ")))
       );
       if (match) {
-        reply = "I found " + match.title + " for " + match.client_name + " (" +
+        const reply = "I found " + match.title + " for " + match.client_name + " (" +
           cryptoAmount(Number(match.amount), match.currency) +
           "). I've opened the payment-request form so you can review the details before creating it.";
         setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
         void openRequestFor(match);
-        return;
+      } else {
+        const reply = completedJobs.length
+          ? "I couldn't find a matching completed crypto job. Mention the job title or client name, or review your completed work in My Jobs."
+          : "There are no completed crypto-denominated jobs ready for a payment request yet. Once you complete a job, I can open its payment-request form.";
+        setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
       }
-      reply = completedJobs.length
-        ? "I couldn't find a matching completed crypto job. Open My Jobs to review your completed work, or mention the job title or client name."
-        : "There are no completed crypto-denominated jobs ready for an invoice yet. Once you complete a job, I can open its payment-request form.";
-    } else if (lower.includes("completed")) {
+      return;
+    }
+
+    if (lower.includes("completed")) {
       setJobFilter("completed");
       setNav("My Jobs");
       setMobileNavOpen(false);
-      reply = "I've opened My Jobs and filtered the list to completed work. You have " + completedJobs.length + " completed job(s).";
     } else if (lower.includes("pending") || lower.includes("unpaid") || lower.includes("shared")) {
       setNav("My Payments");
       setMobileNavOpen(false);
-      reply = "I've opened My Payments. There are " + sharedRequests.length + " shared request(s) awaiting payment. A shared request is not proof of an on-chain payment.";
     } else if (lower.includes("active") || lower.includes("in progress")) {
       setJobFilter("in_progress");
       setNav("My Jobs");
       setMobileNavOpen(false);
-      reply = "I've opened My Jobs and filtered to " + activeJobs.length + " active job(s).";
-    } else if (lower.includes("summary") || lower.includes("overview") || lower.includes("status")) {
-      reply = "Here's your workspace summary: " + jobs.length + " job(s), " + activeJobs.length +
-        " active, " + completedJobs.length + " completed, " + paymentRequests.length +
-        " payment request(s), and " + sharedRequests.length + " shared request(s).";
-    } else if (lower.includes("help") || lower.includes("what can")) {
-      reply = "I can show your completed jobs, open active jobs, review shared or unpaid requests, summarise your workspace, and prepare an invoice from a completed crypto job.";
-    } else {
-      reply = "I can help with your Taskora workflow. Try: “Show completed jobs”, “Show unpaid requests”, “Summarise my workspace”, or “Prepare an invoice”.";
     }
-    setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
+
+    try {
+      const response = await fetch("/api/assistant/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          conversationId: assistantConversationId,
+          messages: [
+            ...previousMessages.map((message) => ({ role: message.role, content: message.content })),
+            { role: "user", content: prompt },
+          ],
+        }),
+      });
+      const result = await response.json() as { reply?: string; error?: string; conversationId?: string };
+      if (!response.ok) throw new Error(result.error ?? "Taskora Assistant couldn't respond right now.");
+      if (result.conversationId) setAssistantConversationId(result.conversationId);
+      setAssistantMessages((items) => [
+        ...items,
+        { role: "assistant", content: result.reply ?? "I couldn't form a response. Please try again." },
+      ]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Something went wrong while contacting Taskora Assistant.";
+      setAssistantMessages((items) => [...items, { role: "assistant", content: message }]);
+    }
   }
 
   async function signOut() {
@@ -383,16 +422,16 @@ export default function Dashboard() {
 
 
       {nav === "Assistant" && <>
-        <section className="welcome"><div><p className="eyebrow">YOUR WORKFLOW COMPANION</p><h1>Taskora Assistant</h1><p className="sub">Get help with jobs and crypto payment requests using your live workspace data.</p></div><span className="assistant-state"><span className="live-dot"/> Guided assistant preview</span></section>
+        <section className="welcome"><div><p className="eyebrow">YOUR WORKFLOW COMPANION</p><h1>Taskora Assistant</h1><p className="sub">Get help with jobs and crypto payment requests using your live workspace data.</p></div><span className="assistant-state"><span className="live-dot"/> AI assistant · setup required</span></section>
         <div className="assistant-layout">
           <section className="panel assistant-chat-panel">
-            <div className="assistant-chat-head"><div className="assistant-avatar"><Bot size={20}/></div><div><b>Taskora Assistant</b><span>Connected to your workspace records</span></div><span className="assistant-beta">PREVIEW</span></div>
+            <div className="assistant-chat-head"><div className="assistant-avatar"><Bot size={20}/></div><div><b>Taskora Assistant</b><span>Workspace tools available after sign-in</span></div><span className="assistant-beta">AI BETA</span></div>
             <div className="assistant-messages" aria-live="polite">
               {assistantMessages.map((message,index)=><div className={"chat-message "+message.role} key={index}><div className="chat-bubble">{message.content}</div></div>)}
               {loading && <p className="panel-sub">Loading your workspace context…</p>}
             </div>
             <form className="assistant-composer" onSubmit={sendAssistantMessage}><input aria-label="Ask Taskora Assistant" value={assistantInput} onChange={(event)=>setAssistantInput(event.target.value)} placeholder="Ask about jobs, payments or invoices…" maxLength={500}/><button type="submit" className="primary" disabled={!assistantInput.trim()} aria-label="Send message"><Send size={16}/></button></form>
-            <p className="assistant-disclaimer">This preview uses guided workflow rules, not a connected AI model. It will not send payments or mark requests as paid.</p>
+            <p className="assistant-disclaimer">AI replies use your authenticated workspace data when Gateway access is configured. Financial actions always require your review; the Assistant cannot send or confirm payments.</p>
           </section>
           <aside className="assistant-side">
             <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Workspace snapshot</h2><p className="panel-sub">Live counts from your account.</p></div></div><div className="assistant-metric"><span>Total jobs</span><b>{jobs.length}</b></div><div className="assistant-metric"><span>Completed jobs</span><b>{completedJobs.length}</b></div><div className="assistant-metric"><span>Shared requests</span><b>{sharedRequests.length}</b></div></section>
