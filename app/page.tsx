@@ -15,7 +15,7 @@ type PaymentRequestRow = Tables<"payment_requests">;
 type PaymentRequestView = PaymentRequestRow & { client_name: string; job_title: string };
 type JobStatus = "in_progress" | "completed" | "cancelled";
 type JobView = JobRow & { client_name: string };
-type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices" | "Assistant";
+type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices" | "Assistant" | "Settings";
 type Asset = "USDC" | "NEAR";
 
 const isCryptoAsset = (currency: string): currency is Asset => currency === "USDC" || currency === "NEAR";
@@ -42,6 +42,12 @@ export default function Dashboard() {
   const [nav, setNav] = useState<PageName>("Overview");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileFullName, setProfileFullName] = useState("");
+  const [profileBusinessName, setProfileBusinessName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [jobFilter, setJobFilter] = useState<"all" | JobStatus>("all");
   const [selected, setSelected] = useState("");
   const [requestNote, setRequestNote] = useState("");
@@ -65,11 +71,14 @@ export default function Dashboard() {
       return;
     }
     setUserEmail(user.email ?? "");
-    const [{ data: jobRows, error: jobsError }, { data: clients, error: clientsError }, { data: requestRows, error: requestsError }] = await Promise.all([
+    const [{ data: jobRows, error: jobsError }, { data: clients, error: clientsError }, { data: requestRows, error: requestsError }, { data: profile }] = await Promise.all([
       supabase.from("jobs").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("*").order("created_at", { ascending: false }),
       supabase.from("payment_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("full_name,business_name").eq("id", user.id).maybeSingle(),
     ]);
+    setProfileFullName(profile?.full_name ?? "");
+    setProfileBusinessName(profile?.business_name ?? "");
     if (jobsError || clientsError || requestsError) {
       notify("Couldn't load your workspace. Please refresh and try again.");
       setLoading(false);
@@ -124,6 +133,30 @@ export default function Dashboard() {
   const paidRequests = paymentRequests.filter((request) => request.status === "paid");
   const sharedRequests = paymentRequests.filter((request) => request.status === "shared");
   const filteredJobs = jobs.filter((job) => jobFilter === "all" || job.status === jobFilter);
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const searchJobResults = normalizedSearch
+    ? jobs.filter((job) => [job.title, job.client_name, job.status, job.currency].some((value) => value.toLowerCase().includes(normalizedSearch))).slice(0, 5)
+    : [];
+  const searchRequestResults = normalizedSearch
+    ? paymentRequests.filter((request) => [request.job_title, request.client_name, request.status, request.currency].some((value) => value.toLowerCase().includes(normalizedSearch))).slice(0, 5)
+    : [];
+  const notificationItems = [
+    ...paymentRequests.filter((request) => request.status === "draft").slice(0, 3).map((request) => ({
+      title: "Draft payment request",
+      detail: request.job_title + " · " + request.client_name,
+      page: "Invoices" as PageName,
+    })),
+    ...paymentRequests.filter((request) => request.status === "shared").slice(0, 3).map((request) => ({
+      title: "Awaiting client payment",
+      detail: request.job_title + " · " + request.client_name,
+      page: "My Payments" as PageName,
+    })),
+    ...completedJobs.filter((job) => !paymentRequests.some((request) => request.job_id === job.id)).slice(0, 2).map((job) => ({
+      title: "Completed job needs a request",
+      detail: job.title + " · " + job.client_name,
+      page: "My Jobs" as PageName,
+    })),
+  ].slice(0, 6);
 
   async function submitJob(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -319,6 +352,34 @@ export default function Dashboard() {
     }
   }
 
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.replace("/login"); return; }
+    setSaving(true);
+    const { error } = await supabase.from("profiles").update({
+      full_name: profileFullName.trim() || null,
+      business_name: profileBusinessName.trim() || null,
+    }).eq("id", user.id);
+    setSaving(false);
+    if (error) { notify("Couldn't save your profile: " + error.message); return; }
+    notify("Profile settings saved.");
+  }
+
+  async function changePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (newPassword.length < 8) {
+      notify("Use a password with at least 8 characters.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSaving(false);
+    if (error) { notify("Couldn't update your password: " + error.message); return; }
+    setNewPassword("");
+    notify("Your password has been updated.");
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     window.location.replace("/login");
@@ -330,6 +391,7 @@ export default function Dashboard() {
     { name: "My Payments" as PageName, icon: Wallet },
     { name: "Invoices" as PageName, icon: FileText },
     { name: "Assistant" as PageName, icon: Bot },
+    { name: "Settings" as PageName, icon: Settings },
   ];
 
   const changePage = (page: PageName) => {
@@ -372,7 +434,7 @@ export default function Dashboard() {
       <p className="label">WORKSPACE</p>
       <nav className="nav">{navs.map(({ name, icon: Icon }) => <button key={name} title={collapsed ? name : undefined} className={nav === name ? "active" : ""} onClick={() => changePage(name)}><Icon size={17}/><span>{name}</span></button>)}</nav>
       <p className="label preferences-label">PREFERENCES</p>
-      <nav className="nav"><button title={collapsed ? "Settings" : undefined} onClick={() => notify("Settings will be added after the core payment workflow.")}><Settings size={17}/><span>Settings</span></button></nav>
+      <nav className="nav"><button title={collapsed ? "Settings" : undefined} className={nav === "Settings" ? "active" : ""} onClick={() => changePage("Settings")}><Settings size={17}/><span>Settings</span></button></nav>
       <div className="bottom">
         <div className="help"><strong>Need a hand?</strong><p>Turn completed work into a secure crypto payment request.</p><button onClick={() => { const first = completedJobs.find((job) => isCryptoAsset(job.currency)); if (!first) { notify("Complete a crypto-denominated job first."); return; } void openRequestFor(first); }}>Create a request ↗</button></div>
         <div className="profile"><div className="avatar">T</div><div className="profile-copy"><b>{userEmail || "Your account"}</b><div className="muted">Taskora account</div></div><button className="icon" aria-label="Sign out" onClick={signOut}><LogOut size={15}/></button></div>
@@ -382,8 +444,20 @@ export default function Dashboard() {
     <main className="main">
       <header className="top">
         <div className="top-left"><button className="mobile-menu-btn icon" aria-label="Open navigation" onClick={() => setMobileNavOpen(true)}><Menu size={18}/></button><span>Workspace　/　<b style={{ color: "#26332c" }}>{nav}</b></span></div>
-        <div className="actions"><span className="pill">NEAR ecosystem workspace</span><button className="icon" aria-label="Search" onClick={() => notify("Search will be available across jobs and requests soon.")}><Search size={16}/></button><button className="icon" aria-label="Notifications" onClick={() => notify("You're all caught up.")}><Bell size={16}/></button></div>
+        <div className="actions"><span className="pill">NEAR ecosystem workspace</span><button className="icon" aria-label="Search" aria-expanded={searchOpen} onClick={() => { setSearchOpen((value) => !value); setNotificationsOpen(false); }}><Search size={16}/></button><button className="icon notification-trigger" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen((value) => !value); setSearchOpen(false); }}><Bell size={16}/>{notificationItems.length > 0 && <span className="notification-dot"/>}</button></div>
       </header>
+      {searchOpen && <section className="utility-popover search-popover" role="dialog" aria-label="Search workspace">
+        <div className="utility-popover-head"><b>Search workspace</b><button className="utility-close" onClick={() => setSearchOpen(false)} aria-label="Close search"><X size={15}/></button></div>
+        <input autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search jobs, clients or payment requests…" aria-label="Search jobs, clients or payment requests"/>
+        {!normalizedSearch && <p className="utility-hint">Search by job title, client, status or crypto asset.</p>}
+        {normalizedSearch && searchJobResults.length === 0 && searchRequestResults.length === 0 && <p className="utility-hint">No matching jobs or payment requests.</p>}
+        {searchJobResults.map((job) => <button className="utility-result" key={"job-"+job.id} onClick={() => { setJobFilter("all"); changePage("My Jobs"); setSearchOpen(false); }}><span><b>{job.title}</b><small>{job.client_name} · Job · {job.status.replace("_"," ")}</small></span><ArrowUpRight size={14}/></button>)}
+        {searchRequestResults.map((request) => <button className="utility-result" key={"request-"+request.id} onClick={() => { changePage("Invoices"); setSearchOpen(false); }}><span><b>{request.job_title}</b><small>{request.client_name} · Payment request · {request.status}</small></span><ArrowUpRight size={14}/></button>)}
+      </section>}
+      {notificationsOpen && <section className="utility-popover notifications-popover" role="dialog" aria-label="Workspace notifications">
+        <div className="utility-popover-head"><div><b>Notifications</b><small>{notificationItems.length} items need your attention</small></div><button className="utility-close" onClick={() => setNotificationsOpen(false)} aria-label="Close notifications"><X size={15}/></button></div>
+        {notificationItems.length === 0 ? <p className="utility-hint">You're all caught up. New drafts and completed jobs will appear here.</p> : notificationItems.map((item,index) => <button className="utility-result" key={item.title+"-"+index} onClick={() => { changePage(item.page); setNotificationsOpen(false); }}><span><b>{item.title}</b><small>{item.detail}</small></span><ArrowUpRight size={14}/></button>)}
+      </section>}
 
       {nav === "Overview" && <>
         <section className="welcome"><div><p className="eyebrow">YOUR WORK, IN MOTION</p><h1>Welcome to Taskora</h1><p className="sub">Manage work, prepare crypto payment requests and track your client workflow.</p></div><button className="primary" onClick={() => setOpen(true)}><Plus size={16}/> Create a job</button></section>
@@ -438,6 +512,30 @@ export default function Dashboard() {
             <section className="panel assistant-suggestions"><h2 className="panel-title">Quick prompts</h2><button onClick={()=>setAssistantInput("Show my completed jobs")}>Show my completed jobs <ArrowUpRight size={13}/></button><button onClick={()=>setAssistantInput("Show my unpaid requests")}>Show unpaid requests <ArrowUpRight size={13}/></button><button onClick={()=>setAssistantInput("Summarise my workspace")}>Summarise my workspace <ArrowUpRight size={13}/></button><button onClick={()=>setAssistantInput("Prepare an invoice")}>Prepare an invoice <ArrowUpRight size={13}/></button></section>
           </aside>
         </div>
+      </>}
+
+      {nav === "Settings" && <>
+        <section className="welcome"><div><p className="eyebrow">ACCOUNT PREFERENCES</p><h1>Settings</h1><p className="sub">Manage your Taskora profile and account security.</p></div></section>
+        <div className="settings-layout">
+          <section className="panel">
+            <div className="panel-head"><div><h2 className="panel-title">Profile information</h2><p className="panel-sub">These details are used to identify your workspace.</p></div></div>
+            <form className="form" onSubmit={saveProfile}>
+              <div className="field"><label htmlFor="profile-name">Full name</label><input id="profile-name" maxLength={120} value={profileFullName} onChange={(event)=>setProfileFullName(event.target.value)} placeholder="Your full name"/></div>
+              <div className="field"><label htmlFor="business-name">Business name</label><input id="business-name" maxLength={160} value={profileBusinessName} onChange={(event)=>setProfileBusinessName(event.target.value)} placeholder="Your business or studio (optional)"/></div>
+              <div className="field"><label htmlFor="account-email">Account email</label><input id="account-email" value={userEmail} readOnly aria-readonly="true"/><small className="field-hint">Email address is managed by your sign-in provider.</small></div>
+              <div className="form-actions"><button className="primary" type="submit" disabled={saving}>{saving ? "Saving…" : "Save profile"}</button></div>
+            </form>
+          </section>
+          <section className="panel">
+            <div className="panel-head"><div><h2 className="panel-title">Password & security</h2><p className="panel-sub">Choose a strong password you don't use elsewhere.</p></div></div>
+            <form className="form" onSubmit={changePassword}>
+              <div className="field"><label htmlFor="new-password">New password</label><input id="new-password" type="password" minLength={8} required autoComplete="new-password" value={newPassword} onChange={(event)=>setNewPassword(event.target.value)} placeholder="At least 8 characters"/></div>
+              <div className="form-actions"><button className="primary" type="submit" disabled={saving || newPassword.length < 8}>{saving ? "Updating…" : "Update password"}</button></div>
+            </form>
+            <div className="settings-signout"><div><b>Sign out</b><span>End this session on this device.</span></div><button className="secondary" onClick={() => void signOut()}><LogOut size={14}/> Sign out</button></div>
+          </section>
+        </div>
+        <div className="info-banner"><LockIconText /> Profile changes are private to your account. Password updates are handled securely by Supabase Auth.</div>
       </>}
 
       {nav === "Invoices" && <>
