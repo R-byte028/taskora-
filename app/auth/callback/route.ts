@@ -9,8 +9,11 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
-    return NextResponse.redirect(new URL(safeNext, origin));
+
+    if (!error) {
+      const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
+      return NextResponse.redirect(new URL(safeNext, origin));
+    }
   }
 
   return NextResponse.redirect(new URL("/login?error=confirmation", origin));
