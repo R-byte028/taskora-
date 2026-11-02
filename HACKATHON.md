@@ -10,7 +10,10 @@ Taskora helps freelancers and small businesses organise client jobs and request 
 - [x] Protected workspace routes and sign-out.
 - [x] Create and list jobs.
 - [x] Mark jobs complete.
-- [x] Prepare and save payment request drafts.
+- [x] Prepare and save payment requests for completed jobs.
+- [x] Generate secure client share links from the dashboard.
+- [x] Retry sharing a saved draft when link creation initially fails.
+- [x] Review payment requests and revoke active client links.
 - [x] Clear disclosure that no payments are collected.
 
 ## Implemented backend
@@ -27,10 +30,10 @@ Taskora helps freelancers and small businesses organise client jobs and request 
 ## Remaining milestones
 - [ ] Test full sign-up, email confirmation, sign-in and sign-out in a running browser.
 - [ ] Add edit/delete flows for clients and jobs.
-- [x] Implement secure token-hash-based client request links and a limited public request view in the application code.
-- [x] Apply the secure-sharing database migration to the Taskora Supabase project.
-- [ ] Live-test authenticated token creation, expiry and invalid-link handling.
-- [ ] Add provider-side payment request management and lifecycle controls.
+- [x] Implement secure token-hash-based client request links and a limited public request view.
+- [x] Apply secure-sharing and link-revocation migrations to the Taskora Supabase project.
+- [x] Add provider-side request listing, retry sharing and link revocation.
+- [ ] Live-test authenticated token creation, sharing, revocation, expiry and invalid-link handling.
 - [ ] Connect an AI service to help structure provider-supplied work details.
 - [ ] Select and implement an appropriate NEAR testnet payment primitive.
 - [ ] Verify transaction status from authoritative chain data.
@@ -41,12 +44,13 @@ Taskora helps freelancers and small businesses organise client jobs and request 
 NEAR must be part of the actual payment experience, not merely mentioned in the interface. The appropriate supported NEAR payment primitive will be selected and validated as the flow is implemented. A frontend button or client-side state is not proof of payment.
 
 ## Current limitations
-The code has been committed, but a production build and live browser test have not yet been run. Secure public client-link code is committed and its database migration is applied. The flow has not yet been live-tested. AI integration, wallet connection and NEAR payments are not implemented. The client page does not collect funds.
+The code has been committed, but a production build and live browser test have not yet been run. Secure public client-link and revocation code is committed, and both database migrations are applied. The authenticated flow has not yet been live-tested. AI integration, wallet connection and NEAR payments are not implemented. The client page does not collect funds.
 
 ## Intended judge walkthrough
 1. Create an account and confirm the email.
 2. Sign in to the private Taskora workspace.
 3. Create a job for a demo client and agreed amount.
 4. Mark the work complete.
-5. Save a payment request draft.
-6. Once secure sharing and NEAR integration are implemented, open the client link, complete a testnet payment and show the verified transaction reference and updated status.
+5. Create a secure client payment-request link and open it in a private browser session.
+6. Revoke the link from the provider dashboard and confirm the old link becomes unavailable.
+7. Once NEAR integration is implemented, complete a testnet payment and show the verified transaction reference and updated status.
