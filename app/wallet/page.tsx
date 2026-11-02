@@ -67,9 +67,11 @@ export default function NearWalletPage() {
       try {
         await connector.whenManifestLoaded;
         if (!mounted) return;
-        const connected = await connector.getConnectedWallet();
-        if (mounted && connected.accounts[0]?.accountId) {
-          await handleSignIn({ accounts: connected.accounts });
+        // The documented connector API exposes the active wallet through wallet().
+        const wallet = await connector.wallet();
+        const accounts = await wallet.getAccounts();
+        if (mounted && accounts[0]?.accountId) {
+          await handleSignIn({ accounts });
         }
       } catch {
         // No existing wallet session is a normal first-visit state.
