@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowDownLeft, ArrowUpRight, Bell, BriefcaseBusiness, CheckCircle2,
+  Activity, ArrowDownLeft, ArrowUpRight, Bell, Bot, BriefcaseBusiness, CheckCircle2,
   ChevronLeft, ChevronRight, Clock3, Copy, CreditCard, FileText, LayoutDashboard,
-  LogOut, Menu, Plus, Search, Settings, Sparkles, Wallet, X, Zap
+  LogOut, Menu, Plus, Search, Send, Settings, Sparkles, Wallet, X, Zap
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -15,7 +15,7 @@ type PaymentRequestRow = Tables<"payment_requests">;
 type PaymentRequestView = PaymentRequestRow & { client_name: string; job_title: string };
 type JobStatus = "in_progress" | "completed" | "cancelled";
 type JobView = JobRow & { client_name: string };
-type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices";
+type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices" | "Assistant";
 type Asset = "USDC" | "NEAR";
 
 const isCryptoAsset = (currency: string): currency is Asset => currency === "USDC" || currency === "NEAR";
@@ -46,6 +46,10 @@ export default function Dashboard() {
   const [selected, setSelected] = useState("");
   const [requestNote, setRequestNote] = useState("");
   const [shareUrl, setShareUrl] = useState("");
+  const [assistantInput, setAssistantInput] = useState("");
+  const [assistantMessages, setAssistantMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([
+    { role: "assistant", content: "Hi! I can help you navigate your Taskora workspace and prepare payment requests from completed jobs. Try asking me to show completed jobs, check pending requests, or prepare an invoice." },
+  ]);
   const [form, setForm] = useState({ title: "", client: "", amount: "", description: "", currency: "USDC" as Asset });
 
   const notify = (message: string) => {
@@ -223,6 +227,59 @@ export default function Dashboard() {
     await loadJobs();
   }
 
+
+  function sendAssistantMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const prompt = assistantInput.trim();
+    if (!prompt) return;
+    const lower = prompt.toLowerCase();
+    setAssistantMessages((items) => [...items, { role: "user", content: prompt }]);
+    setAssistantInput("");
+
+    let reply = "";
+    if (lower.includes("invoice") || lower.includes("payment request") || lower.includes("request payment")) {
+      const match = completedJobs.find((job) =>
+        isCryptoAsset(job.currency) &&
+        (lower.includes(job.title.toLowerCase()) || lower.includes(job.client_name.toLowerCase())
+          || (!lower.includes(" for ") && !lower.includes(" of ")))
+      );
+      if (match) {
+        reply = "I found " + match.title + " for " + match.client_name + " (" +
+          cryptoAmount(Number(match.amount), match.currency) +
+          "). I've opened the payment-request form so you can review the details before creating it.";
+        setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
+        void openRequestFor(match);
+        return;
+      }
+      reply = completedJobs.length
+        ? "I couldn't find a matching completed crypto job. Open My Jobs to review your completed work, or mention the job title or client name."
+        : "There are no completed crypto-denominated jobs ready for an invoice yet. Once you complete a job, I can open its payment-request form.";
+    } else if (lower.includes("completed")) {
+      setJobFilter("completed");
+      setNav("My Jobs");
+      setMobileNavOpen(false);
+      reply = "I've opened My Jobs and filtered the list to completed work. You have " + completedJobs.length + " completed job(s).";
+    } else if (lower.includes("pending") || lower.includes("unpaid") || lower.includes("shared")) {
+      setNav("My Payments");
+      setMobileNavOpen(false);
+      reply = "I've opened My Payments. There are " + sharedRequests.length + " shared request(s) awaiting payment. A shared request is not proof of an on-chain payment.";
+    } else if (lower.includes("active") || lower.includes("in progress")) {
+      setJobFilter("in_progress");
+      setNav("My Jobs");
+      setMobileNavOpen(false);
+      reply = "I've opened My Jobs and filtered to " + activeJobs.length + " active job(s).";
+    } else if (lower.includes("summary") || lower.includes("overview") || lower.includes("status")) {
+      reply = "Here's your workspace summary: " + jobs.length + " job(s), " + activeJobs.length +
+        " active, " + completedJobs.length + " completed, " + paymentRequests.length +
+        " payment request(s), and " + sharedRequests.length + " shared request(s).";
+    } else if (lower.includes("help") || lower.includes("what can")) {
+      reply = "I can show your completed jobs, open active jobs, review shared or unpaid requests, summarise your workspace, and prepare an invoice from a completed crypto job.";
+    } else {
+      reply = "I can help with your Taskora workflow. Try: “Show completed jobs”, “Show unpaid requests”, “Summarise my workspace”, or “Prepare an invoice”.";
+    }
+    setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     window.location.replace("/login");
@@ -233,6 +290,7 @@ export default function Dashboard() {
     { name: "My Jobs" as PageName, icon: BriefcaseBusiness },
     { name: "My Payments" as PageName, icon: Wallet },
     { name: "Invoices" as PageName, icon: FileText },
+    { name: "Assistant" as PageName, icon: Bot },
   ];
 
   const changePage = (page: PageName) => {
@@ -321,6 +379,26 @@ export default function Dashboard() {
         <section className="stats compact-stats"><article className="card"><div className="stat-top"><span>Confirmed</span><CheckCircle2 size={17}/></div><div className="stat-value">{paidRequests.length}</div><div className="stat-foot">Verified payment records</div></article><article className="card"><div className="stat-top"><span>Awaiting payment</span><Clock3 size={17}/></div><div className="stat-value">{sharedRequests.length}</div><div className="stat-foot">Shared with clients</div></article><article className="card"><div className="stat-top"><span>Draft requests</span><FileText size={17}/></div><div className="stat-value">{paymentRequests.filter((r)=>r.status==="draft").length}</div><div className="stat-foot">Not yet shared</div></article></section>
         <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Payment activity</h2><p className="panel-sub">A payment is not marked complete until on-chain verification is implemented.</p></div><span className="pill">Crypto only</span></div>{loading?<p className="panel-sub">Loading payment activity…</p>:requestRows(paymentRequests)}</section>
         <div className="info-banner"><LockIconText /> Wallet connection and transaction verification are not live yet. Shared links are payment requests, not proof that funds have been received.</div>
+      </>}
+
+
+      {nav === "Assistant" && <>
+        <section className="welcome"><div><p className="eyebrow">YOUR WORKFLOW COMPANION</p><h1>Taskora Assistant</h1><p className="sub">Get help with jobs and crypto payment requests using your live workspace data.</p></div><span className="assistant-state"><span className="live-dot"/> Guided assistant preview</span></section>
+        <div className="assistant-layout">
+          <section className="panel assistant-chat-panel">
+            <div className="assistant-chat-head"><div className="assistant-avatar"><Bot size={20}/></div><div><b>Taskora Assistant</b><span>Connected to your workspace records</span></div><span className="assistant-beta">PREVIEW</span></div>
+            <div className="assistant-messages" aria-live="polite">
+              {assistantMessages.map((message,index)=><div className={"chat-message "+message.role} key={index}><div className="chat-bubble">{message.content}</div></div>)}
+              {loading && <p className="panel-sub">Loading your workspace context…</p>}
+            </div>
+            <form className="assistant-composer" onSubmit={sendAssistantMessage}><input aria-label="Ask Taskora Assistant" value={assistantInput} onChange={(event)=>setAssistantInput(event.target.value)} placeholder="Ask about jobs, payments or invoices…" maxLength={500}/><button type="submit" className="primary" disabled={!assistantInput.trim()} aria-label="Send message"><Send size={16}/></button></form>
+            <p className="assistant-disclaimer">This preview uses guided workflow rules, not a connected AI model. It will not send payments or mark requests as paid.</p>
+          </section>
+          <aside className="assistant-side">
+            <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Workspace snapshot</h2><p className="panel-sub">Live counts from your account.</p></div></div><div className="assistant-metric"><span>Total jobs</span><b>{jobs.length}</b></div><div className="assistant-metric"><span>Completed jobs</span><b>{completedJobs.length}</b></div><div className="assistant-metric"><span>Shared requests</span><b>{sharedRequests.length}</b></div></section>
+            <section className="panel assistant-suggestions"><h2 className="panel-title">Quick prompts</h2><button onClick={()=>setAssistantInput("Show my completed jobs")}>Show my completed jobs <ArrowUpRight size={13}/></button><button onClick={()=>setAssistantInput("Show my unpaid requests")}>Show unpaid requests <ArrowUpRight size={13}/></button><button onClick={()=>setAssistantInput("Summarise my workspace")}>Summarise my workspace <ArrowUpRight size={13}/></button><button onClick={()=>setAssistantInput("Prepare an invoice")}>Prepare an invoice <ArrowUpRight size={13}/></button></section>
+          </aside>
+        </div>
       </>}
 
       {nav === "Invoices" && <>
