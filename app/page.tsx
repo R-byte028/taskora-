@@ -233,94 +233,64 @@ export default function Dashboard() {
     const prompt = assistantInput.trim();
     if (!prompt) return;
     const lower = prompt.toLowerCase();
+    const previousMessages = assistantMessages.slice(-10);
     setAssistantMessages((items) => [...items, { role: "user", content: prompt }]);
     setAssistantInput("");
 
-    const callTool = async (action: string, status?: JobStatus) => {
-      const response = await fetch("/api/assistant", {
+    if (lower.includes("invoice") || lower.includes("payment request") || lower.includes("request payment")) {
+      const match = completedJobs.find((job) =>
+        isCryptoAsset(job.currency) &&
+        (lower.includes(job.title.toLowerCase()) || lower.includes(job.client_name.toLowerCase())
+          || (!lower.includes(" for ") && !lower.includes(" of ")))
+      );
+      if (match) {
+        const reply = "I found " + match.title + " for " + match.client_name + " (" +
+          cryptoAmount(Number(match.amount), match.currency) +
+          "). I've opened the payment-request form so you can review the details before creating it.";
+        setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
+        void openRequestFor(match);
+      } else {
+        const reply = completedJobs.length
+          ? "I couldn't find a matching completed crypto job. Mention the job title or client name, or review your completed work in My Jobs."
+          : "There are no completed crypto-denominated jobs ready for a payment request yet. Once you complete a job, I can open its payment-request form.";
+        setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
+      }
+      return;
+    }
+
+    if (lower.includes("completed")) {
+      setJobFilter("completed");
+      setNav("My Jobs");
+      setMobileNavOpen(false);
+    } else if (lower.includes("pending") || lower.includes("unpaid") || lower.includes("shared")) {
+      setNav("My Payments");
+      setMobileNavOpen(false);
+    } else if (lower.includes("active") || lower.includes("in progress")) {
+      setJobFilter("in_progress");
+      setNav("My Jobs");
+      setMobileNavOpen(false);
+    }
+
+    try {
+      const response = await fetch("/api/assistant/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
-        body: JSON.stringify({ action, ...(status ? { status } : {}) }),
+        body: JSON.stringify({
+          messages: [
+            ...previousMessages.map((message) => ({ role: message.role, content: message.content })),
+            { role: "user", content: prompt },
+          ],
+        }),
       });
-      const result = await response.json() as {
-        error?: string;
-        count?: number;
-        jobs?: { title: string; amount: number; currency: string }[];
-        summary?: {
-          jobs: number;
-          activeJobs: number;
-          completedJobs: number;
-          cancelledJobs: number;
-          paymentRequests: number;
-          sharedPaymentRequests: number;
-          completedJobValue: { USDC: number; NEAR: number };
-        };
-      };
-      if (!response.ok) throw new Error(result.error ?? "The Assistant couldn't retrieve that information.");
-      return result;
-    };
-
-    try {
-      let reply = "";
-
-      if (lower.includes("invoice") || lower.includes("payment request") || lower.includes("request payment")) {
-        const match = completedJobs.find((job) =>
-          isCryptoAsset(job.currency) &&
-          (lower.includes(job.title.toLowerCase()) || lower.includes(job.client_name.toLowerCase())
-            || (!lower.includes(" for ") && !lower.includes(" of ")))
-        );
-        if (match) {
-          reply = "I found " + match.title + " for " + match.client_name + " (" +
-            cryptoAmount(Number(match.amount), match.currency) +
-            "). I've opened the payment-request form so you can review the details before creating it.";
-          setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
-          void openRequestFor(match);
-          return;
-        }
-        reply = completedJobs.length
-          ? "I couldn't find a matching completed crypto job. Open My Jobs to review your completed work, or mention the job title or client name."
-          : "There are no completed crypto-denominated jobs ready for an invoice yet. Once you complete a job, I can open its payment-request form.";
-      } else if (lower.includes("completed")) {
-        const result = await callTool("list_jobs", "completed");
-        setJobFilter("completed");
-        setNav("My Jobs");
-        setMobileNavOpen(false);
-        const titles = (result.jobs ?? []).slice(0, 3).map((job) => job.title).join(", ");
-        reply = "I've opened My Jobs and filtered the list to completed work. The server found " +
-          (result.count ?? 0) + " completed job(s)." + (titles ? " Recent jobs: " + titles + "." : "");
-      } else if (lower.includes("pending") || lower.includes("unpaid") || lower.includes("shared")) {
-        const result = await callTool("list_pending_payments");
-        setNav("My Payments");
-        setMobileNavOpen(false);
-        reply = "I've opened My Payments. The server found " + (result.count ?? 0) +
-          " shared request(s) awaiting payment. A shared request is not proof of an on-chain payment.";
-      } else if (lower.includes("active") || lower.includes("in progress")) {
-        const result = await callTool("list_jobs", "in_progress");
-        setJobFilter("in_progress");
-        setNav("My Jobs");
-        setMobileNavOpen(false);
-        reply = "I've opened My Jobs. The server found " + (result.count ?? 0) + " active job(s).";
-      } else if (lower.includes("summary") || lower.includes("overview") || lower.includes("status")) {
-        const result = await callTool("workspace_summary");
-        const summary = result.summary;
-        if (!summary) throw new Error("The workspace summary was incomplete.");
-        reply = "Here's your workspace summary: " + summary.jobs + " job(s), " +
-          summary.activeJobs + " active, " + summary.completedJobs + " completed, " +
-          summary.paymentRequests + " payment request(s), and " + summary.sharedPaymentRequests +
-          " shared request(s). Completed job value: " +
-          cryptoAmount(summary.completedJobValue.USDC, "USDC") + " · " +
-          new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(summary.completedJobValue.NEAR) +
-          " NEAR. These are job values, not confirmed payments.";
-      } else if (lower.includes("help") || lower.includes("what can")) {
-        reply = "I can show your completed jobs, open active jobs, review shared or unpaid requests, summarise your workspace, and prepare a payment request from a completed crypto job.";
-      } else {
-        reply = "I can help with your Taskora workflow. Try: “Show completed jobs”, “Show unpaid requests”, “Summarise my workspace”, or “Prepare an invoice”.";
-      }
-
-      setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
+      const result = await response.json() as { reply?: string; error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Taskora Assistant couldn't respond right now.");
+      setAssistantMessages((items) => [
+        ...items,
+        { role: "assistant", content: result.reply ?? "I couldn't form a response. Please try again." },
+      ]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Something went wrong while contacting the Assistant tools.";
+      const message = error instanceof Error ? error.message : "Something went wrong while contacting Taskora Assistant.";
       setAssistantMessages((items) => [...items, { role: "assistant", content: message }]);
     }
   }
