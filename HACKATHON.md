@@ -10,7 +10,8 @@ Taskora is a crypto-first job-to-payment assistant for freelancers and small bus
 
 - [x] Responsive overview dashboard.
 - [x] Collapsible desktop sidebar and mobile navigation drawer.
-- [x] Dedicated Overview, My Jobs, My Payments and Invoices workspace views.
+- [x] Dedicated Overview, My Jobs, My Payments, Invoices and Assistant workspace views.
+- [x] Guided assistant preview reads live workspace records and routes users to relevant job/payment workflows.
 - [x] Crypto-denominated job creation using USDC or NEAR.
 - [x] Separate USDC and NEAR value display.
 - [x] Account sign-up, sign-in and email confirmation callback.
@@ -37,7 +38,7 @@ Taskora is a crypto-first job-to-payment assistant for freelancers and small bus
 - [ ] Test sign-up, email confirmation, sign-in and sign-out in a running browser.
 - [ ] Add edit/delete flows for clients and jobs.
 - [ ] Live-test secure link creation, sharing, revocation, expiry and invalid-link handling.
-- [ ] Connect an AI service to help structure provider-supplied work details.
+- [ ] Connect an AI service/agent runtime to interpret natural-language requests and safely orchestrate approved Taskora actions.
 - [ ] Integrate a NEAR-compatible wallet connector.
 - [ ] Implement and verify native NEAR testnet transfers.
 - [ ] Confirm the exact USDC token contract and network deployment before enabling USDC transfers.
@@ -51,7 +52,7 @@ NEAR must be part of the actual payment experience, not merely mentioned in the 
 
 ## Current limitations
 
-The crypto-first dashboard and secure payment-request link flow are committed. The crypto-only currency migration is applied. The authenticated flow still needs live browser testing. AI integration, wallet connection and on-chain payments are not implemented. Public request pages do not collect funds.
+The crypto-first dashboard, guided assistant preview and secure payment-request link flow are committed. The crypto-only currency migration is applied. The authenticated flow still needs live browser testing. The assistant is currently rule-based and is not yet an AI model/agent integration. Wallet connection and on-chain payments are not implemented. Public request pages do not collect funds.
 
 ## Intended judge walkthrough
 
