@@ -179,15 +179,6 @@ export default function Dashboard() {
     await loadJobs();
   }
 
-  async function revokeShare(requestId: string) {
-    if (!window.confirm("Revoke this client link? The existing link will stop working, but the payment request will remain saved.")) return;
-    const response = await fetch(`/api/payment-requests/${requestId}/revoke`, { method: "POST" });
-    const result = await response.json() as { error?: string };
-    if (!response.ok) { notify(result.error ?? "Could not revoke this link."); return; }
-    notify("Client link revoked. The request is now a draft.");
-    await loadJobs();
-  }
-
   async function signOut() {
     await supabase.auth.signOut();
     window.location.replace("/login");
