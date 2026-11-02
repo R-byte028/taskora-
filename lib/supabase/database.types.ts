@@ -187,6 +187,12 @@ export type Database = {
         }
         Returns: string
       }
+      revoke_payment_request_share: {
+        Args: {
+          p_request_id: string
+        }
+        Returns: boolean
+      }
       get_public_payment_request: {
         Args: {
           p_token: string
