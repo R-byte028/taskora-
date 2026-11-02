@@ -205,6 +205,17 @@ export default function Dashboard() {
     await loadJobs();
   }
 
+  async function cancelJob(job: JobView) {
+    if (job.status !== "in_progress") return;
+    if (!window.confirm("Cancel this job? It will remain in your records with a cancelled status.")) return;
+    const { error } = await supabase.from("jobs").update({
+      status: "cancelled" satisfies JobStatus,
+      completed_at: null,
+    }).eq("id", job.id);
+    if (error) { notify("Couldn't cancel this job: " + error.message); return; }
+    notify("Job cancelled.");
+    await loadJobs();
+  }
   async function openRequestFor(job: JobView) {
     if (!isCryptoAsset(job.currency)) {
       notify("This older record uses a fiat denomination. Create a new crypto-denominated job first.");
@@ -406,7 +417,7 @@ export default function Dashboard() {
         <div className="amount">{cryptoAmount(Number(job.amount), job.currency)}</div>
         <div className="job-actions">
           <span className={"status " + (job.status === "completed" ? "complete" : job.status === "cancelled" ? "pending" : "progress")}>{job.status.replace("_", " ")}</span>
-          {job.status === "in_progress" && <button className="mini-action" onClick={() => void markComplete(job)}>Mark complete</button>}
+          {job.status === "in_progress" && <><button className="mini-action" onClick={() => void markComplete(job)}>Mark complete</button><button className="mini-action danger-action" onClick={() => void cancelJob(job)}>Cancel job</button></>}
           {job.status === "completed" && isCryptoAsset(job.currency) && <button className="mini-action" onClick={() => void openRequestFor(job)}>Request payment</button>}
         </div>
       </div>);
