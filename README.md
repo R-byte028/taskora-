@@ -14,6 +14,8 @@ Taskora is a crypto-first workspace for freelancers and small businesses to orga
 - Crypto-only job and payment-request denominations: USDC and NEAR
 - USDC as the default USD-pegged crypto denomination
 - Separate display of USDC and NEAR totals
+- Guided Taskora Assistant preview connected to the signed-in user's jobs and payment requests
+- Assistant quick actions to filter completed/active jobs, review pending requests, summarise the workspace and prepare an invoice
 - Secure client links using random server-side tokens; only token hashes are stored
 - Review saved payment requests, retry draft sharing and revoke active links
 - Owner-only Row Level Security on profiles, clients, jobs and payment requests
@@ -55,7 +57,7 @@ Taskora is not a live payment product yet.
 - Wallet connection, payment collection and on-chain transaction verification are not implemented.
 - Shared links are requests for payment, not proof that funds have been received.
 - Confirmed-payment totals must only include authoritative on-chain verification.
-- The AI assistant is not connected to an AI model yet.
+- The Assistant currently uses transparent guided workflow rules; it is not connected to an AI model or autonomous agent runtime yet.
 - USDC settlement on NEAR requires verification of the exact supported token contract and network deployment.
 
 Do not use the current build to collect real funds.
