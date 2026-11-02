@@ -10,7 +10,10 @@ Taskora is a crypto-first workspace for freelancers and small businesses to orga
 - Email confirmation callback and protected workspace
 - Persistent client and job records in Supabase
 - Collapsible responsive workspace navigation
-- Overview, My Jobs, My Payments and Invoices views
+- Overview, My Jobs, My Payments, Invoices, Assistant and Settings views
+- Workspace-wide search across jobs, clients and payment requests
+- Action-oriented notifications for draft requests, shared requests and completed jobs
+- Profile editing and authenticated password updates in Settings
 - Crypto-only job and payment-request denominations: USDC and NEAR
 - USDC as the default USD-pegged crypto denomination
 - Separate display of USDC and NEAR totals
