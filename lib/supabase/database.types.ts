@@ -180,7 +180,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_payment_request_share: {
+        Args: {
+          p_request_id: string
+          p_token: string
+        }
+        Returns: string
+      }
+      get_public_payment_request: {
+        Args: {
+          p_token: string
+        }
+        Returns: {
+          amount: number
+          client_name: string
+          currency: string
+          expires_at: string
+          job_title: string
+          provider_name: string
+          request_reference: string
+          work_summary: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
