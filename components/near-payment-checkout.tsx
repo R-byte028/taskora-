@@ -30,15 +30,16 @@ export default function NearPaymentCheckout({ token, recipient, amountAtomic }: 
         autoConnect: false,
         footerBranding: null,
       });
-      const wallet = await connector.connect();
-      const accounts = await wallet.getAccounts({ network: "testnet" });
+
+      // connect() opens the wallet selector; the wallet instance is retrieved separately.
+      await connector.connect();
+      const wallet = await connector.wallet();
+      const accounts = await wallet.getAccounts();
       const accountId = accounts[0]?.accountId;
       if (!accountId) throw new Error("The connected wallet did not return an account.");
       setPayer(accountId);
 
       const outcome = await wallet.signAndSendTransaction({
-        network: "testnet",
-        signerId: accountId,
         receiverId: recipient,
         actions: [{ type: "Transfer", params: { deposit: amountAtomic } }],
       });
