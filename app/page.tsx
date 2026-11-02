@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type JobRow = Tables<"jobs">;
-type ClientRow = Tables<"clients">;\ntype PaymentRequestRow = Tables<"payment_requests">;\ntype PaymentRequestView = PaymentRequestRow & { client_name: string; job_title: string };
+type ClientRow = Tables<"clients">;
+type PaymentRequestRow = Tables<"payment_requests">;
+type PaymentRequestView = PaymentRequestRow & { client_name: string; job_title: string };
 type JobStatus = "in_progress" | "completed" | "cancelled";
 type JobView = JobRow & { client_name: string };
 
@@ -15,7 +17,8 @@ const money = (amount: number, currency = "NGN") =>
 
 export default function Dashboard() {
   const supabase = useMemo(() => createClient(), []);
-  const [jobs, setJobs] = useState<JobView[]>([]);\n  const [paymentRequests, setPaymentRequests] = useState<PaymentRequestView[]>([]);
+  const [jobs, setJobs] = useState<JobView[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequestView[]>([]);
   const [userEmail, setUserEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,19 +43,26 @@ export default function Dashboard() {
       return;
     }
     setUserEmail(user.email ?? "");
-    const [{ data: jobRows, error: jobsError }, { data: clients, error: clientsError }] = await Promise.all([
+    const [{ data: jobRows, error: jobsError }, { data: clients, error: clientsError }, { data: requestRows, error: requestsError }] = await Promise.all([
       supabase.from("jobs").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("*").order("created_at", { ascending: false }),
+      supabase.from("payment_requests").select("*").order("created_at", { ascending: false }),
     ]);
-    if (jobsError || clientsError) {
+    if (jobsError || clientsError || requestsError) {
       notify("Couldn't load your workspace. Please refresh and try again.");
       setLoading(false);
       return;
     }
     const clientMap = new Map((clients ?? []).map((client: ClientRow) => [client.id, client.name]));
+    const jobMap = new Map((jobRows ?? []).map((job: JobRow) => [job.id, job]));
     setJobs((jobRows ?? []).map((job: JobRow) => ({
       ...job,
       client_name: job.client_id ? clientMap.get(job.client_id) ?? "Client" : "No client",
+    })));
+    setPaymentRequests((requestRows ?? []).map((request: PaymentRequestRow) => ({
+      ...request,
+      client_name: clientMap.get(request.client_id) ?? "Client",
+      job_title: jobMap.get(request.job_id)?.title ?? "Job",
     })));
     setLoading(false);
   }, [supabase]);
@@ -160,7 +170,25 @@ export default function Dashboard() {
     }
   }
 
-  async function revokeShare(requestId: string) {\n    if (!window.confirm("Revoke this client link? The existing link will stop working, but the payment request will remain saved.")) return;\n    const response = await fetch(`/api/payment-requests/${requestId}/revoke`, { method: "POST" });\n    const result = await response.json() as { error?: string };\n    if (!response.ok) { notify(result.error ?? "Could not revoke this link."); return; }\n    notify("Client link revoked. The request is now a draft.");\n    await loadJobs();\n  }\n\n  async function signOut() {
+  async function revokeShare(requestId: string) {
+    if (!window.confirm("Revoke this client link? The existing link will stop working, but the payment request will remain saved.")) return;
+    const response = await fetch(`/api/payment-requests/${requestId}/revoke`, { method: "POST" });
+    const result = await response.json() as { error?: string };
+    if (!response.ok) { notify(result.error ?? "Could not revoke this link."); return; }
+    notify("Client link revoked. The request is now a draft.");
+    await loadJobs();
+  }
+
+  async function revokeShare(requestId: string) {
+    if (!window.confirm("Revoke this client link? The existing link will stop working, but the payment request will remain saved.")) return;
+    const response = await fetch(`/api/payment-requests/${requestId}/revoke`, { method: "POST" });
+    const result = await response.json() as { error?: string };
+    if (!response.ok) { notify(result.error ?? "Could not revoke this link."); return; }
+    notify("Client link revoked. The request is now a draft.");
+    await loadJobs();
+  }
+
+  async function signOut() {
     await supabase.auth.signOut();
     window.location.replace("/login");
   }
@@ -192,7 +220,8 @@ export default function Dashboard() {
           <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Your jobs</h2><p className="panel-sub">Your saved client work, newest first.</p></div><button className="text-btn" onClick={() => setOpen(true)}>+ Add job</button></div>
             {loading ? <p className="panel-sub">Loading your jobs…</p> : jobs.length === 0 ? <div className="empty-state"><BriefcaseBusiness size={24}/><b>No jobs yet</b><span>Create your first job to get started. Your records will be saved to your account.</span></div> : jobs.slice(0, 10).map((job) => <div className="job" key={job.id}><div className="job-main"><div className="job-icon"><BriefcaseBusiness size={16}/></div><div style={{ minWidth: 0 }}><div className="job-name">{job.title}</div><div className="job-client">{job.client_name}</div></div></div><div className="amount">{money(Number(job.amount), job.currency)}</div><div className="job-actions"><span className={"status " + (job.status === "completed" ? "complete" : job.status === "cancelled" ? "pending" : "progress")}>{job.status.replace("_", " ")}</span>{job.status === "in_progress" && <button className="mini-action" onClick={() => void markComplete(job)}>Mark done</button>}{job.status === "completed" && <button className="mini-action" onClick={() => { setSelected(job.id); setRequestOpen(true); }}>Request payment</button>}</div></div>)}
           </section>
-          <section className="panel" style={{ marginTop: 18 }}><div className="panel-head"><div><h2 className="panel-title">Payment requests</h2><p className="panel-sub">Manage the links you have shared with clients.</p></div><span className="pill">{paymentRequests.length} saved</span></div>{paymentRequests.length === 0 ? <p className="panel-sub">Your payment requests will appear here.</p> : paymentRequests.slice(0, 8).map((request) => <div className="request-row" key={request.id}><div className="request-info"><b>{request.job_title}</b><span>{request.client_name} · {money(Number(request.amount), request.currency)}</span></div><div className="request-controls"><span className={"status " + (request.status === "shared" ? "complete" : request.status === "paid" ? "paid" : "pending")}>{request.status}</span>{request.status === "shared" && <button className="mini-action" onClick={() => void revokeShare(request.id)}>Revoke link</button>}</div></div>)}</section>\n          <section className="panel" style={{ marginTop: 18 }}><div className="panel-head"><div><h2 className="panel-title">Your account data</h2><p className="panel-sub">Records are stored in your private Taskora database.</p></div><span className="pill">Synced</span></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Account authentication</b><span>Managed by Supabase Auth.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Private job records</b><span>Protected by owner-only Row Level Security.</span></div></div></section>
+          <section className="panel" style={{ marginTop: 18 }}><div className="panel-head"><div><h2 className="panel-title">Payment requests</h2><p className="panel-sub">Manage the links you have shared with clients.</p></div><span className="pill">{paymentRequests.length} saved</span></div>{paymentRequests.length === 0 ? <p className="panel-sub">Your payment requests will appear here.</p> : paymentRequests.slice(0, 8).map((request) => <div className="request-row" key={request.id}><div className="request-info"><b>{request.job_title}</b><span>{request.client_name} · {money(Number(request.amount), request.currency)}</span></div><div className="request-controls"><span className={"status " + (request.status === "shared" ? "complete" : request.status === "paid" ? "paid" : "pending")}>{request.status}</span>{request.status === "shared" && <button className="mini-action" onClick={() => void revokeShare(request.id)}>Revoke link</button>}</div></div>)}</section>
+          <section className="panel" style={{ marginTop: 18 }}><div className="panel-head"><div><h2 className="panel-title">Your account data</h2><p className="panel-sub">Records are stored in your private Taskora database.</p></div><span className="pill">Synced</span></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Account authentication</b><span>Managed by Supabase Auth.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Private job records</b><span>Protected by owner-only Row Level Security.</span></div></div></section>
         </div>
         <div>
           <section className="assistant"><span className="assistant-label"><Sparkles size={13} style={{ display: "inline" }}/> TASKORA PAYMENT ASSISTANT</span><h2>Finished the work? Prepare the payment request.</h2><p>Choose a completed job and save a structured payment request to your account.</p><button onClick={() => { const first = jobs.find((job) => job.status === "completed"); if (!first) { notify("Mark a job as complete first."); return; } setSelected(first.id); setRequestOpen(true); }}><Zap size={14} style={{ display: "inline" }}/> Prepare payment request　<ArrowUpRight size={13} style={{ display: "inline" }}/></button></section>
