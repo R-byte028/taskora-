@@ -8,12 +8,15 @@ type PageProps = {
   params: Promise<{ token: string }>;
 };
 
-const money = (amount: number, currency: string) =>
-  new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
+const money = (amount: number, currency: string) => {
+  const formatted = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: currency === "USDC" ? 2 : 0,
+    maximumFractionDigits: currency === "USDC" ? 2 : 4,
   }).format(amount);
+  if (currency === "USDC") return "$" + formatted + " USDC";
+  if (currency === "NEAR") return formatted + " NEAR";
+  return "Unsupported payment asset";
+};
 
 export default async function PublicPaymentRequestPage({ params }: PageProps) {
   const { token } = await params;
@@ -65,11 +68,11 @@ export default async function PublicPaymentRequestPage({ params }: PageProps) {
           <LockKeyhole size={17} />
           <p>
             <strong>Secure request link.</strong><br />
-            This link is private to whoever has it and expires on {expiry}. Payment collection is not enabled yet, so no funds can be sent through this page.
+            This link is private to whoever has it and expires on {expiry}. Wallet payment collection and on-chain verification are not enabled yet, so no funds can be sent through this page.
           </p>
         </div>
         <div className="client-disabled" aria-disabled="true">
-          <Clock3 size={16} /> NEAR payment options are coming next
+          <Clock3 size={16} /> Crypto wallet payment options are coming next
         </div>
         <p className="client-footer"><Sparkles size={13} /> Prepared with Taskora · Work done. Payments moving.</p>
       </div>
