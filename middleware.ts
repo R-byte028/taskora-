@@ -27,7 +27,8 @@ export async function middleware(request: NextRequest) {
   if (!user && !isLogin && !isAuthCallback && !isPublicPaymentLink) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
-    redirectUrl.searchParams.set("next", request.nextUrl.pathname);
+    redirectUrl.search = "";
+    redirectUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(redirectUrl);
   }
 
