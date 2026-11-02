@@ -2,19 +2,21 @@
 
 **Work done. Payments moving.**
 
-Taskora is a workspace for freelancers and small businesses to organise client jobs and prepare payment requests for completed work.
+Taskora is a crypto-first workspace for freelancers and small businesses to organise client jobs and prepare secure crypto payment requests for completed work, with NEAR as the target settlement ecosystem.
 
 ## Current build
 
 - Email/password sign-up and sign-in with Supabase Auth
-- Email confirmation callback
-- Protected dashboard routes and sign-out
+- Email confirmation callback and protected workspace
 - Persistent client and job records in Supabase
-- Mark jobs complete and create structured payment requests
-- Generate secure client links with random server-side tokens; only token hashes are stored
-- Review saved payment requests and revoke active client links
+- Collapsible responsive workspace navigation
+- Overview, My Jobs, My Payments and Invoices views
+- Crypto-only job and payment-request denominations: USDC and NEAR
+- USDC as the default USD-pegged crypto denomination
+- Separate display of USDC and NEAR totals
+- Secure client links using random server-side tokens; only token hashes are stored
+- Review saved payment requests, retry draft sharing and revoke active links
 - Owner-only Row Level Security on profiles, clients, jobs and payment requests
-- Typed Supabase browser and server clients
 
 ## Run locally
 
@@ -40,45 +42,38 @@ The publishable key is designed for use in a public client application. Never ex
 
 ## Supabase project
 
-Taskora uses the dedicated Supabase project `basqoozudxgomnccrnub`. Its database includes:
+Taskora uses the dedicated Supabase project `basqoozudxgomnccrnub`. Its database includes profiles, clients, jobs and payment_requests. Row Level Security limits each signed-in user to their own records.
 
-- `profiles`
-- `clients`
-- `jobs`
-- `payment_requests`
-
-All four tables have Row Level Security enabled. The policies limit each signed-in user to their own records.
+The crypto-only currency migration sets USDC as the default and allows USDC or NEAR. Fiat currencies are not accepted for new records.
 
 ## Important limitations
 
 Taskora is not a live payment product yet.
 
-- Secure client-facing share-link code is in place: random tokens are generated server-side, only SHA-256 hashes are stored, and public pages receive a limited set of request details.
-- Secure-sharing and link-revocation migrations are applied to the Taskora Supabase project. The authenticated end-to-end flow still needs testing.
-- There is no payment collection, wallet connection or NEAR transaction integration.
-- The dashboard's confirmed earnings remain zero until authoritative payment verification exists.
-- The assistant is not connected to an AI model yet.
-- The current dashboard uses NGN as its initial job-entry currency.
+- Secure client-facing share links use random server-side tokens; only SHA-256 hashes are stored.
+- Secure-sharing, revocation and crypto-only currency migrations are applied to the Taskora Supabase project.
+- Wallet connection, payment collection and on-chain transaction verification are not implemented.
+- Shared links are requests for payment, not proof that funds have been received.
+- Confirmed-payment totals must only include authoritative on-chain verification.
+- The AI assistant is not connected to an AI model yet.
+- USDC settlement on NEAR requires verification of the exact supported token contract and network deployment.
 
-Do not use the current build to collect real funds or share confidential client information through manually constructed URLs.
+Do not use the current build to collect real funds.
 
 ## Tech stack
 
-- Next.js 15
-- React 19
-- TypeScript
+- Next.js 15, React 19 and TypeScript
 - Supabase PostgreSQL and Auth
 - `@supabase/ssr` and `@supabase/supabase-js`
-- Tailwind CSS
-- Lucide icons
+- Tailwind CSS and Lucide icons
 
 ## Planned NEAR hackathon flow
 
-1. A provider signs in and records a client job.
-2. The provider marks the work complete.
-3. Taskora prepares a structured payment request.
-4. The client reviews the request through a secure, expiring share link. The provider can revoke the link.
-5. A supported NEAR payment flow is added.
-6. Payment status changes only after authoritative transaction verification.
+1. Provider records a client job in USDC or NEAR.
+2. Provider marks the work complete.
+3. Taskora prepares a secure crypto payment request.
+4. Client reviews the request through an expiring share link.
+5. Client connects a NEAR-compatible wallet and approves the correct asset transfer.
+6. A server-side verifier confirms final on-chain execution before the request is marked paid.
 
-See [HACKATHON.md](./HACKATHON.md) for milestones and the judge walkthrough.
+See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
