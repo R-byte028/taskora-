@@ -17,8 +17,25 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
 
+  // Keep this public endpoint's input bounded before parsing or contacting upstream services.
+  const contentLength = Number(req.headers.get("content-length") ?? "0");
+  if (contentLength > 8_192) return json({ error: "Request is too large." }, 413);
+  if (!req.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    return json({ error: "Content-Type must be application/json." }, 415);
+  }
+
   try {
-    const { token, transactionHash, signerAccountId } = await req.json();
+    const rawBody = await req.text();
+    if (rawBody.length > 8_192) return json({ error: "Request is too large." }, 413);
+
+    let body: Record<string, unknown>;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return json({ error: "Invalid JSON request body." }, 400);
+    }
+
+    const { token, transactionHash, signerAccountId } = body;
     if (
       typeof token !== "string" || !/^[A-Za-z0-9_-]{40,128}$/.test(token) ||
       typeof transactionHash !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{40,50}$/.test(transactionHash) ||
@@ -35,12 +52,30 @@ Deno.serve(async (req: Request) => {
     const context = contexts?.[0];
     if (!context) return json({ error: "This payment request is invalid, expired or revoked." }, 404);
 
-    const rpc = await fetch("https://rpc.testnet.near.org", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: "taskora-payment-verifier", method: "EXPERIMENTAL_tx_status", params: [transactionHash, signerAccountId, "FINAL"] }),
-    });
-    const payload = await rpc.json();
+    let rpc: Response;
+    try {
+      rpc = await fetch("https://rpc.testnet.near.org", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "taskora-payment-verifier",
+          method: "EXPERIMENTAL_tx_status",
+          params: [transactionHash, signerAccountId, "FINAL"],
+        }),
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      return json({ status: "pending", message: "The network verifier is temporarily unavailable. Try again shortly." }, 202);
+    }
+
+    let payload: Record<string, any>;
+    try {
+      payload = await rpc.json();
+    } catch {
+      return json({ status: "pending", message: "The network verifier returned an unreadable response. Try again shortly." }, 202);
+    }
+
     if (!rpc.ok || payload.error || !payload.result) {
       return json({ status: "pending", message: "The transaction is not yet available at finality. Try again shortly." }, 202);
     }
