@@ -89,8 +89,12 @@ export default function Dashboard() {
   const activeJobs = jobs.filter((job) => job.status === "in_progress");
   const completedJobs = jobs.filter((job) => job.status === "completed");
   const cryptoJobs = jobs.filter((job) => isCryptoAsset(job.currency));
-  const pendingValue = completedJobs.filter((job) => isCryptoAsset(job.currency))
+  const pendingUsdc = completedJobs.filter((job) => job.currency === "USDC")
     .reduce((sum, job) => sum + Number(job.amount), 0);
+  const pendingNear = completedJobs.filter((job) => job.currency === "NEAR")
+    .reduce((sum, job) => sum + Number(job.amount), 0);
+  const pendingValueLabel = cryptoAmount(pendingUsdc, "USDC") + " · " +
+    new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(pendingNear) + " NEAR";
   const paidRequests = paymentRequests.filter((request) => request.status === "paid");
   const sharedRequests = paymentRequests.filter((request) => request.status === "shared");
   const filteredJobs = jobs.filter((job) => jobFilter === "all" || job.status === jobFilter);
@@ -289,7 +293,7 @@ export default function Dashboard() {
         <section className="stats">
           {[
             { name: "Confirmed payments", value: paidRequests.length.toString().padStart(2, "0"), foot: "Only verified payments count", icon: Wallet },
-            { name: "Completed job value", value: cryptoAmount(pendingValue, "USDC"), foot: "Across crypto-denominated jobs", icon: Clock3 },
+            { name: "Completed job value", value: pendingValueLabel, foot: "USDC and NEAR values shown separately", icon: Clock3 },
             { name: "Active jobs", value: String(activeJobs.length).padStart(2, "0"), foot: "Currently in progress", icon: BriefcaseBusiness },
             { name: "Payment requests", value: String(paymentRequests.length).padStart(2, "0"), foot: sharedRequests.length + " shared with clients", icon: Activity },
           ].map(({ name, value, foot, icon: Icon }) => <article className="card" key={name}><div className="stat-top"><span>{name}</span><Icon size={17}/></div><div className="stat-value">{value}</div><div className="stat-foot">{foot}</div></article>)}
