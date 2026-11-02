@@ -398,16 +398,16 @@ export default function Dashboard() {
 
 
       {nav === "Assistant" && <>
-        <section className="welcome"><div><p className="eyebrow">YOUR WORKFLOW COMPANION</p><h1>Taskora Assistant</h1><p className="sub">Get help with jobs and crypto payment requests using your live workspace data.</p></div><span className="assistant-state"><span className="live-dot"/> Guided assistant preview</span></section>
+        <section className="welcome"><div><p className="eyebrow">YOUR WORKFLOW COMPANION</p><h1>Taskora Assistant</h1><p className="sub">Get help with jobs and crypto payment requests using your live workspace data.</p></div><span className="assistant-state"><span className="live-dot"/> AI assistant · setup required</span></section>
         <div className="assistant-layout">
           <section className="panel assistant-chat-panel">
-            <div className="assistant-chat-head"><div className="assistant-avatar"><Bot size={20}/></div><div><b>Taskora Assistant</b><span>Connected to your workspace records</span></div><span className="assistant-beta">PREVIEW</span></div>
+            <div className="assistant-chat-head"><div className="assistant-avatar"><Bot size={20}/></div><div><b>Taskora Assistant</b><span>Workspace tools available after sign-in</span></div><span className="assistant-beta">AI BETA</span></div>
             <div className="assistant-messages" aria-live="polite">
               {assistantMessages.map((message,index)=><div className={"chat-message "+message.role} key={index}><div className="chat-bubble">{message.content}</div></div>)}
               {loading && <p className="panel-sub">Loading your workspace context…</p>}
             </div>
             <form className="assistant-composer" onSubmit={sendAssistantMessage}><input aria-label="Ask Taskora Assistant" value={assistantInput} onChange={(event)=>setAssistantInput(event.target.value)} placeholder="Ask about jobs, payments or invoices…" maxLength={500}/><button type="submit" className="primary" disabled={!assistantInput.trim()} aria-label="Send message"><Send size={16}/></button></form>
-            <p className="assistant-disclaimer">This preview uses guided workflow rules, not a connected AI model. It will not send payments or mark requests as paid.</p>
+            <p className="assistant-disclaimer">AI replies use your authenticated workspace data when Gateway access is configured. Financial actions always require your review; the Assistant cannot send or confirm payments.</p>
           </section>
           <aside className="assistant-side">
             <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Workspace snapshot</h2><p className="panel-sub">Live counts from your account.</p></div></div><div className="assistant-metric"><span>Total jobs</span><b>{jobs.length}</b></div><div className="assistant-metric"><span>Completed jobs</span><b>{completedJobs.length}</b></div><div className="assistant-metric"><span>Shared requests</span><b>{sharedRequests.length}</b></div></section>
