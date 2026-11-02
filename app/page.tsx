@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [nav, setNav] = useState("Overview");
   const [selected, setSelected] = useState("");
   const [requestNote, setRequestNote] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
   const [form, setForm] = useState({ title: "", client: "", amount: "", description: "" });
 
   const notify = (message: string) => {
@@ -124,7 +125,7 @@ export default function Dashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.replace("/login"); return; }
     const summary = requestNote.trim() || job.description || "Work completed as agreed.";
-    const { error } = await supabase.from("payment_requests").insert({
+    const { data: paymentRequest, error } = await supabase.from("payment_requests").insert({
       user_id: user.id,
       job_id: job.id,
       client_id: job.client_id,
@@ -132,12 +133,31 @@ export default function Dashboard() {
       currency: job.currency,
       work_summary: summary,
       status: "draft",
-    });
+    }).select("id").single();
+    if (error || !paymentRequest) {
+      setSaving(false);
+      notify(error?.message ?? "Couldn't save the payment request.");
+      return;
+    }
+
+    const shareResponse = await fetch(`/api/payment-requests/${paymentRequest.id}/share`, { method: "POST" });
+    const shareResult = await shareResponse.json() as { shareUrl?: string; error?: string };
     setSaving(false);
-    if (error) { notify(error.message); return; }
-    setRequestOpen(false);
+    if (!shareResponse.ok || !shareResult.shareUrl) {
+      setRequestOpen(false);
+      setRequestNote("");
+      notify(shareResult.error ?? "Draft saved, but the secure link couldn't be created. Please try again.");
+      return;
+    }
+
+    setShareUrl(shareResult.shareUrl);
     setRequestNote("");
-    notify("Payment request saved securely. Client sharing is the next milestone.");
+    try {
+      await navigator.clipboard.writeText(shareResult.shareUrl);
+      notify("Secure client link created and copied to your clipboard.");
+    } catch {
+      notify("Secure client link created. Use the Copy link button to copy it.");
+    }
   }
 
   async function signOut() {
@@ -185,6 +205,6 @@ export default function Dashboard() {
     {open && <div className="modal-bg" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">WORKSPACE</p><h2>Create a new job</h2></div><button className="close" onClick={() => setOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={submitJob}><div className="field"><label htmlFor="title">Job or service name</label><input id="title" required maxLength={180} placeholder="e.g. Brand identity design" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })}/></div><div className="field"><label htmlFor="client">Client name</label><input id="client" required maxLength={160} placeholder="Who is this work for?" value={form.client} onChange={(event) => setForm({ ...form, client: event.target.value })}/></div><div className="field"><label htmlFor="amount">Agreed amount (NGN)</label><input id="amount" required min="1" step="0.01" type="number" placeholder="e.g. 85000" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })}/></div><div className="field"><label htmlFor="description">Work description (optional)</label><textarea id="description" maxLength={4000} placeholder="Add a short note..." value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })}/></div><div className="form-actions"><button type="button" className="secondary" onClick={() => setOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving ? "Saving…" : <><Plus size={14}/> Add job</>}</button></div></form></div></div>}
 
     {requestOpen && <div className="modal-bg" onMouseDown={(event) => { if (event.target === event.currentTarget) setRequestOpen(false); }}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">TASKORA ASSISTANT</p><h2>Prepare a payment request</h2></div><button className="close" onClick={() => setRequestOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={savePaymentRequest}><div className="field"><label htmlFor="request-job">Completed job</label><select id="request-job" required value={selected} onChange={(event) => setSelected(event.target.value)}>{jobs.filter((job) => job.status === "completed").map((job) => <option key={job.id} value={job.id}>{job.title} — {job.client_name} ({money(Number(job.amount), job.currency)})</option>)}</select></div><div className="field"><label htmlFor="request-note">Work summary for your client</label><textarea id="request-note" maxLength={4000} placeholder="Summarise what was delivered..." value={requestNote} onChange={(event) => setRequestNote(event.target.value)}/></div><p className="form-hint">This saves a private draft. Secure client links and payment processing will be implemented separately.</p><div className="form-actions"><button type="button" className="secondary" onClick={() => setRequestOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={saving || !selected}>{saving ? "Saving…" : <><FileText size={14}/> Save request</>}</button></div></form></div></div>}
-    {toast && <div className="toast">{toast}</div>}
+    {toast && <div className="toast">{toast}{shareUrl && <><button type="button" onClick={() => void navigator.clipboard.writeText(shareUrl)}>Copy link</button><a href={shareUrl} target="_blank" rel="noreferrer">Preview</a></>}</div>}
   </div>;
 }
