@@ -47,6 +47,7 @@ export default function Dashboard() {
   const [requestNote, setRequestNote] = useState("");
   const [shareUrl, setShareUrl] = useState("");
   const [assistantInput, setAssistantInput] = useState("");
+  const [assistantConversationId, setAssistantConversationId] = useState<string | null>(null);
   const [assistantMessages, setAssistantMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([
     { role: "assistant", content: "Hi! I can help you navigate your Taskora workspace and prepare payment requests from completed jobs. Try asking me to show completed jobs, check pending requests, or prepare an invoice." },
   ]);
@@ -89,6 +90,27 @@ export default function Dashboard() {
   }, [supabase]);
 
   useEffect(() => { void loadJobs(); }, [loadJobs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAssistantHistory() {
+      try {
+        const response = await fetch("/api/assistant/history", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json() as {
+          conversationId?: string | null;
+          messages?: { role: "assistant" | "user"; content: string }[];
+        };
+        if (cancelled) return;
+        setAssistantConversationId(result.conversationId ?? null);
+        if (result.messages?.length) setAssistantMessages(result.messages);
+      } catch {
+        // The chat remains usable if history is temporarily unavailable.
+      }
+    }
+    void loadAssistantHistory();
+    return () => { cancelled = true; };
+  }, []);
 
   const activeJobs = jobs.filter((job) => job.status === "in_progress");
   const completedJobs = jobs.filter((job) => job.status === "completed");
@@ -277,14 +299,16 @@ export default function Dashboard() {
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         body: JSON.stringify({
+          conversationId: assistantConversationId,
           messages: [
             ...previousMessages.map((message) => ({ role: message.role, content: message.content })),
             { role: "user", content: prompt },
           ],
         }),
       });
-      const result = await response.json() as { reply?: string; error?: string };
+      const result = await response.json() as { reply?: string; error?: string; conversationId?: string };
       if (!response.ok) throw new Error(result.error ?? "Taskora Assistant couldn't respond right now.");
+      if (result.conversationId) setAssistantConversationId(result.conversationId);
       setAssistantMessages((items) => [
         ...items,
         { role: "assistant", content: result.reply ?? "I couldn't form a response. Please try again." },
