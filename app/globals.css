@@ -57,3 +57,5 @@
 .empty-state b{font-size:12px;color:#344138}
 .empty-state span{max-width:280px;font-size:10px;line-height:1.6}
 button:disabled{opacity:.65;cursor:not-allowed}
+
+.request-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid #f0f1ed}.request-info{display:flex;flex-direction:column;gap:5px;min-width:0}.request-info b{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.request-info span{font-size:10px;color:#929b93}.request-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.request-controls .status{text-transform:capitalize}@media(max-width:480px){.request-row{align-items:flex-start;flex-direction:column}.request-controls{justify-content:flex-start}}
