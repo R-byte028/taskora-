@@ -75,6 +75,7 @@ Deno.serve(async (req: Request) => {
         blockHeight: result.transaction_outcome?.block_height ?? null,
         verifiedBy: "taskora-near-payment-verifier",
       },
+      p_token: token,
     });
     if (finalizeError) {
       if (finalizeError.code === "23505") return json({ error: "This transaction has already been used." }, 409);
