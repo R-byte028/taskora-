@@ -52,7 +52,7 @@ All four tables have Row Level Security enabled. The policies limit each signed-
 Taskora is not a live payment product yet.
 
 - Secure client-facing share-link code is in place: random tokens are generated server-side, only SHA-256 hashes are stored, and public pages receive a limited set of request details.
-- The database migration for share links must be applied before this feature can run; the feature has not yet been live-tested.
+- The secure-sharing migration is applied to the Taskora Supabase project. The flow still needs authenticated end-to-end testing.
 - There is no payment collection, wallet connection or NEAR transaction integration.
 - The dashboard's confirmed earnings remain zero until authoritative payment verification exists.
 - The assistant is not connected to an AI model yet.
