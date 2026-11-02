@@ -10,7 +10,9 @@ Taskora is a workspace for freelancers and small businesses to organise client j
 - Email confirmation callback
 - Protected dashboard routes and sign-out
 - Persistent client and job records in Supabase
-- Mark jobs complete and save payment request drafts
+- Mark jobs complete and create structured payment requests
+- Generate secure client links with random server-side tokens; only token hashes are stored
+- Review saved payment requests and revoke active client links
 - Owner-only Row Level Security on profiles, clients, jobs and payment requests
 - Typed Supabase browser and server clients
 
@@ -52,7 +54,7 @@ All four tables have Row Level Security enabled. The policies limit each signed-
 Taskora is not a live payment product yet.
 
 - Secure client-facing share-link code is in place: random tokens are generated server-side, only SHA-256 hashes are stored, and public pages receive a limited set of request details.
-- The secure-sharing migration is applied to the Taskora Supabase project. The flow still needs authenticated end-to-end testing.
+- Secure-sharing and link-revocation migrations are applied to the Taskora Supabase project. The authenticated end-to-end flow still needs testing.
 - There is no payment collection, wallet connection or NEAR transaction integration.
 - The dashboard's confirmed earnings remain zero until authoritative payment verification exists.
 - The assistant is not connected to an AI model yet.
