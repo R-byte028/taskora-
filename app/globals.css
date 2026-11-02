@@ -175,3 +175,38 @@ button:disabled{opacity:.65;cursor:not-allowed}
   .assistant-composer{padding:11px}
   .chat-bubble{max-width:94%}
 }
+
+
+/* Functional workspace utilities and account settings */
+.main{position:relative}
+.notification-trigger{position:relative}
+.notification-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#d97856;border:1px solid #fff}
+.utility-popover{position:absolute;top:78px;right:42px;z-index:35;width:min(430px,calc(100vw - 32px));max-height:min(70vh,560px);overflow:auto;background:#fff;border:1px solid #e8ebe3;border-radius:14px;padding:15px;box-shadow:0 18px 55px rgba(20,32,23,.16)}
+.notifications-popover{width:min(360px,calc(100vw - 32px))}
+.utility-popover-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:#27352b;font-size:12px}
+.utility-popover-head>div{display:flex;flex-direction:column;gap:4px}
+.utility-popover-head small{font-size:9px;color:#98a197;font-weight:400}
+.utility-close{width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:7px;background:#f3f5ef;color:#667365}
+.utility-popover>input{width:100%;border:1px solid #e5e9e1;border-radius:9px;padding:12px;font-size:11px;outline:none}
+.utility-popover>input:focus{border-color:#a9bc80;box-shadow:0 0 0 3px #edf3df}
+.utility-hint{margin:10px 2px 3px;color:#929d91;font-size:10px;line-height:1.5}
+.utility-result{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;border:0;border-top:1px solid #f0f2ec;background:#fff;padding:12px 3px;text-align:left;color:#6a776a}
+.utility-result:hover{background:#f8faF4}
+.utility-result span{display:flex;flex-direction:column;gap:4px;min-width:0}
+.utility-result b{font-size:10px;color:#344138}
+.utility-result small{font-size:9px;color:#98a197;overflow-wrap:anywhere}
+.settings-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.settings-layout .panel{min-width:0}
+.settings-layout .field input[readonly]{background:#f7f8f5;color:#89938a;cursor:not-allowed}
+.settings-signout{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:22px;padding-top:18px;border-top:1px solid #edf0e9}
+.settings-signout>div{display:flex;flex-direction:column;gap:4px}
+.settings-signout b{font-size:11px;color:#344138}
+.settings-signout span{font-size:9px;color:#98a197}
+.settings-signout button{display:inline-flex;align-items:center;gap:7px}
+@media(max-width:760px){
+  .utility-popover{top:66px;right:15px}
+  .settings-layout{grid-template-columns:1fr}
+}
+@media(max-width:420px){
+  .settings-signout{align-items:flex-start;flex-direction:column}
+}
