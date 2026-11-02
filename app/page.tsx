@@ -157,10 +157,12 @@ export default function Dashboard() {
       setRequestOpen(false);
       setRequestNote("");
       notify(shareResult.error ?? "Draft saved, but the secure link couldn't be created. Please try again.");
+      await loadJobs();
       return;
     }
 
     setShareUrl(shareResult.shareUrl);
+    setRequestOpen(false);
     setRequestNote("");
     try {
       await navigator.clipboard.writeText(shareResult.shareUrl);
@@ -168,6 +170,26 @@ export default function Dashboard() {
     } catch {
       notify("Secure client link created. Use the Copy link button to copy it.");
     }
+    await loadJobs();
+  }
+
+  async function shareDraft(requestId: string) {
+    setSaving(true);
+    const response = await fetch(`/api/payment-requests/${requestId}/share`, { method: "POST" });
+    const result = await response.json() as { shareUrl?: string; error?: string };
+    setSaving(false);
+    if (!response.ok || !result.shareUrl) {
+      notify(result.error ?? "Couldn't create the secure client link.");
+      return;
+    }
+    setShareUrl(result.shareUrl);
+    try {
+      await navigator.clipboard.writeText(result.shareUrl);
+      notify("Secure client link created and copied to your clipboard.");
+    } catch {
+      notify("Secure client link created. Use the Copy link button to copy it.");
+    }
+    await loadJobs();
   }
 
   async function revokeShare(requestId: string) {
@@ -175,6 +197,7 @@ export default function Dashboard() {
     const response = await fetch(`/api/payment-requests/${requestId}/revoke`, { method: "POST" });
     const result = await response.json() as { error?: string };
     if (!response.ok) { notify(result.error ?? "Could not revoke this link."); return; }
+    setShareUrl("");
     notify("Client link revoked. The request is now a draft.");
     await loadJobs();
   }
@@ -211,7 +234,7 @@ export default function Dashboard() {
           <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Your jobs</h2><p className="panel-sub">Your saved client work, newest first.</p></div><button className="text-btn" onClick={() => setOpen(true)}>+ Add job</button></div>
             {loading ? <p className="panel-sub">Loading your jobs…</p> : jobs.length === 0 ? <div className="empty-state"><BriefcaseBusiness size={24}/><b>No jobs yet</b><span>Create your first job to get started. Your records will be saved to your account.</span></div> : jobs.slice(0, 10).map((job) => <div className="job" key={job.id}><div className="job-main"><div className="job-icon"><BriefcaseBusiness size={16}/></div><div style={{ minWidth: 0 }}><div className="job-name">{job.title}</div><div className="job-client">{job.client_name}</div></div></div><div className="amount">{money(Number(job.amount), job.currency)}</div><div className="job-actions"><span className={"status " + (job.status === "completed" ? "complete" : job.status === "cancelled" ? "pending" : "progress")}>{job.status.replace("_", " ")}</span>{job.status === "in_progress" && <button className="mini-action" onClick={() => void markComplete(job)}>Mark done</button>}{job.status === "completed" && <button className="mini-action" onClick={() => { setSelected(job.id); setRequestOpen(true); }}>Request payment</button>}</div></div>)}
           </section>
-          <section className="panel" style={{ marginTop: 18 }}><div className="panel-head"><div><h2 className="panel-title">Payment requests</h2><p className="panel-sub">Manage the links you have shared with clients.</p></div><span className="pill">{paymentRequests.length} saved</span></div>{paymentRequests.length === 0 ? <p className="panel-sub">Your payment requests will appear here.</p> : paymentRequests.slice(0, 8).map((request) => <div className="request-row" key={request.id}><div className="request-info"><b>{request.job_title}</b><span>{request.client_name} · {money(Number(request.amount), request.currency)}</span></div><div className="request-controls"><span className={"status " + (request.status === "shared" ? "complete" : request.status === "paid" ? "paid" : "pending")}>{request.status}</span>{request.status === "shared" && <button className="mini-action" onClick={() => void revokeShare(request.id)}>Revoke link</button>}</div></div>)}</section>
+          <section className="panel" style={{ marginTop: 18 }}><div className="panel-head"><div><h2 className="panel-title">Payment requests</h2><p className="panel-sub">Manage the links you have shared with clients.</p></div><span className="pill">{paymentRequests.length} saved</span></div>{paymentRequests.length === 0 ? <p className="panel-sub">Your payment requests will appear here.</p> : paymentRequests.slice(0, 8).map((request) => <div className="request-row" key={request.id}><div className="request-info"><b>{request.job_title}</b><span>{request.client_name} · {money(Number(request.amount), request.currency)}</span></div><div className="request-controls"><span className={"status " + (request.status === "shared" ? "complete" : request.status === "paid" ? "paid" : "pending")}>{request.status}</span>{request.status === "draft" && <button className="mini-action" disabled={saving} onClick={() => void shareDraft(request.id)}>Share link</button>}{request.status === "shared" && <button className="mini-action" onClick={() => void revokeShare(request.id)}>Revoke link</button>}</div></div>)}</section>
           <section className="panel" style={{ marginTop: 18 }}><div className="panel-head"><div><h2 className="panel-title">Your account data</h2><p className="panel-sub">Records are stored in your private Taskora database.</p></div><span className="pill">Synced</span></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Account authentication</b><span>Managed by Supabase Auth.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Private job records</b><span>Protected by owner-only Row Level Security.</span></div></div></section>
         </div>
         <div>
