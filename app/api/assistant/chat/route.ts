@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     return errorResponse("Taskora Assistant AI is not configured yet. Add AI Gateway authentication to the Vercel project environment.", 503);
   }
 
-  let body: { messages?: unknown };
+  let body: { messages?: unknown; conversationId?: unknown };
   try {
     body = await request.json() as { messages?: unknown };
   } catch {
@@ -165,6 +165,45 @@ export async function POST(request: Request) {
   if (messages[messages.length - 1].role !== "user") {
     return errorResponse("The latest chat message must be from the user.", 400);
   }
+
+  if (body.conversationId !== undefined &&
+      body.conversationId !== null &&
+      (typeof body.conversationId !== "string" ||
+       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.conversationId))) {
+    return errorResponse("Invalid Assistant conversation.", 400);
+  }
+
+  const db = supabase as any;
+  let conversationId = typeof body.conversationId === "string" ? body.conversationId : null;
+
+  if (conversationId) {
+    const { data: existingConversation, error: lookupError } = await db
+      .from("assistant_conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (lookupError || !existingConversation) {
+      return errorResponse("Assistant conversation not found.", 404);
+    }
+  } else {
+    const firstPrompt = messages[messages.length - 1].content;
+    const { data: createdConversation, error: createError } = await db
+      .from("assistant_conversations")
+      .insert({ user_id: user.id, title: firstPrompt.slice(0, 120) || "New conversation" })
+      .select("id")
+      .single();
+    if (createError || !createdConversation) {
+      return errorResponse("Couldn't start an Assistant conversation.", 500);
+    }
+    conversationId = createdConversation.id;
+  }
+
+  const latestUserMessage = messages[messages.length - 1].content;
+  const { error: saveUserError } = await db
+    .from("assistant_messages")
+    .insert({ conversation_id: conversationId, user_id: user.id, role: "user", content: latestUserMessage });
+  if (saveUserError) return errorResponse("Couldn't save your message. Please try again.", 500);
 
   const gatewayMessages: Array<Record<string, unknown>> = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -222,9 +261,21 @@ export async function POST(request: Request) {
       if (!assistantMessage) return errorResponse("The AI service returned an empty response.", 502);
 
       if (!assistantMessage.tool_calls?.length) {
+        const reply = assistantMessage.content?.trim() || "I couldn't form a response. Please try asking another way.";
+        const { error: saveAssistantError } = await db
+          .from("assistant_messages")
+          .insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: reply.slice(0, 3000) });
+        if (saveAssistantError) {
+          return errorResponse("Your reply was generated, but couldn't be saved to Assistant history.", 500);
+        }
+        await db.from("assistant_conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", conversationId)
+          .eq("user_id", user.id);
         return NextResponse.json({
-          reply: assistantMessage.content?.trim() || "I couldn't form a response. Please try asking another way.",
+          reply,
           model: MODEL,
+          conversationId,
         }, { headers: { "Cache-Control": "no-store" } });
       }
 
