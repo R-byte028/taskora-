@@ -11,7 +11,7 @@ create table if not exists public.job_milestones (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint job_milestones_id_user_id_key unique (id, user_id),
-  constraint job_milestones_job_owner_fkey
+  constraint job_milestones_job_owner_fk
     foreign key (job_id, user_id)
     references public.jobs (id, user_id) on delete cascade,
   constraint job_milestones_completion_consistency
@@ -28,7 +28,7 @@ create table if not exists public.milestone_checklist_items (
   completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint milestone_checklist_items_milestone_owner_fkey
+  constraint milestone_checklist_items_milestone_owner_fk
     foreign key (milestone_id, user_id)
     references public.job_milestones (id, user_id) on delete cascade,
   constraint milestone_checklist_items_completion_consistency
