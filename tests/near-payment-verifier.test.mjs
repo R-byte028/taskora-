@@ -190,3 +190,52 @@ test("mock boundary maps a duplicate database response to conflict", async () =>
   });
   assert.deepEqual(result, { status: 409, finalizeCalls: 1 });
 });
+
+test("rejects incomplete payment context fields", () => {
+  for (const invalidContext of [
+    { recipient_account_id: context.recipient_account_id, amount_atomic: context.amount_atomic },
+    { payment_request_id: context.payment_request_id, amount_atomic: context.amount_atomic },
+    { payment_request_id: context.payment_request_id, recipient_account_id: context.recipient_account_id },
+    { ...context, amount_atomic: null },
+  ]) {
+    assert.equal(hasValidPaymentContext(invalidContext), false);
+  }
+});
+
+test("rejects malformed or incomplete final RPC execution objects", () => {
+  for (const result of [
+    null,
+    {},
+    { status: { SuccessValue: "" } },
+    { transaction },
+    { transaction: null, status: { SuccessValue: "" } },
+  ]) {
+    assert.equal(isFinalSuccessfulExecution(result), false);
+  }
+});
+
+test("rejects missing, empty, or non-transfer action arrays", () => {
+  for (const actions of [undefined, [], [{}], [{ FunctionCall: { method_name: "transfer" } }]]) {
+    assert.equal(matchesRequestedTransfer({
+      transaction: { ...transaction, actions },
+      transactionHash: transaction.hash,
+      signerAccountId: transaction.signer_id,
+      context,
+    }), false);
+  }
+});
+
+test("mock boundary treats malformed RPC payloads as pending and never finalizes", async () => {
+  for (const payload of [null, {}, { result: null }, { result: undefined }]) {
+    const result = await runMockVerification({ rpcResponse: { ok: true, payload } });
+    assert.equal(result.status, 202);
+    assert.equal(result.finalizeCalls, 0);
+  }
+});
+
+test("mock boundary returns a server error for non-duplicate finalization failures", async () => {
+  const result = await runMockVerification({
+    finalizeResult: { data: null, error: { code: "XX000", message: "database unavailable" } },
+  });
+  assert.deepEqual(result, { status: 500, finalizeCalls: 1 });
+});
