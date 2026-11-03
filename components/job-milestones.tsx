@@ -13,7 +13,8 @@ export default function JobMilestones({ jobId }: { jobId: string }) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [expanded, setExpanded] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -23,22 +24,24 @@ export default function JobMilestones({ jobId }: { jobId: string }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     const { data: milestoneRows, error } = await supabase
       .from("job_milestones").select("*").eq("job_id", jobId)
       .order("sort_order", { ascending: true }).order("created_at", { ascending: true });
-    if (error) { setLoading(false); return; }
+    if (error) { setLoadError("Could not load this work plan. Please try again."); setLoading(false); return; }
     const rows = milestoneRows ?? [];
     setMilestones(rows);
     if (rows.length) {
-      const { data: checklistRows } = await supabase.from("milestone_checklist_items")
+      const { data: checklistRows, error: checklistError } = await supabase.from("milestone_checklist_items")
         .select("*").in("milestone_id", rows.map((row) => row.id))
         .order("sort_order", { ascending: true }).order("created_at", { ascending: true });
-      setItems(checklistRows ?? []);
+      if (checklistError) { setLoadError("Milestones loaded, but checklist tasks could not be loaded."); setItems([]); }
+      else setItems(checklistRows ?? []);
     } else setItems([]);
     setLoading(false);
   }, [jobId, supabase]);
 
-  useEffect(() => { if (expanded) void load(); }, [expanded, load]);
+  useEffect(() => { void load(); }, [load]);
 
   async function addMilestone(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -109,10 +112,11 @@ export default function JobMilestones({ jobId }: { jobId: string }) {
   const done = milestones.filter((milestone) => milestone.status === "completed").length;
   const totalItems = items.length;
   const completedItems = items.filter((item) => item.is_completed).length;
+  const progress = milestones.length ? Math.round((done / milestones.length) * 100) : 0;
 
   return <section className="milestone-box">
     <button type="button" className="milestone-toggle" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
-      <span><ClipboardList size={14}/> Work plan <small>{done}/{milestones.length} milestones · {completedItems}/{totalItems} tasks</small></span>
+      <span><ClipboardList size={14}/> Work plan <small>{loading ? "Loading progress…" : done + "/" + milestones.length + " milestones · " + completedItems + "/" + totalItems + " tasks"}</small></span>
       {expanded ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
     </button>
     {expanded && <div className="milestone-content">
