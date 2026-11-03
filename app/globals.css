@@ -245,3 +245,4 @@ button:disabled{opacity:.65;cursor:not-allowed}
 .milestone-edit{display:flex;gap:4px;min-width:0}
 .milestone-edit button{flex-shrink:0}
 @media(max-width:760px){.milestone-box{margin:0;}.milestone-card-head{flex-wrap:wrap}.milestone-tools{width:100%;justify-content:flex-start}.milestone-tools select{max-width:150px}.milestone-create{display:grid;grid-template-columns:1fr}.checklist-add input{width:100%}}
+.milestone-overview{padding:0 12px 10px;display:grid;gap:5px}.milestone-progress-track{height:5px;border-radius:99px;background:#e9eee3;overflow:hidden}.milestone-progress-track span{display:block;height:100%;border-radius:99px;background:#91aa58;transition:width .2s ease}.milestone-overview small{font-size:9px;color:#899486}.milestone-error{font-size:10px;color:#a34e42;margin:6px 0;padding:8px;background:#fff4f1;border-radius:6px}.milestone-error button{border:0;background:transparent;color:#7b493e;text-decoration:underline;font-weight:700}
