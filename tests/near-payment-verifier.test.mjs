@@ -102,3 +102,91 @@ test("rejects a mismatched transaction hash, signer, or extra action", () => {
     context,
   }), false);
 });
+
+
+// Mock-only endpoint boundary. It uses fixture data and injected stubs; it never
+// contacts NEAR RPC, Supabase, or a wallet.
+async function runMockVerification({
+  contextResult = context,
+  rpcResponse = { ok: true, payload: { result: finalResult } },
+  finalizeResult = { data: "event-1", error: null },
+} = {}) {
+  let finalizeCalls = 0;
+
+  if (!hasValidPaymentContext(contextResult)) {
+    return { status: 404, finalizeCalls };
+  }
+  if (!rpcResponse.ok || rpcResponse.unreadable || rpcResponse.payload?.error ||
+      !rpcResponse.payload?.result) {
+    return { status: 202, finalizeCalls };
+  }
+
+  const result = rpcResponse.payload.result;
+  if (!isFinalSuccessfulExecution(result)) {
+    return { status: 400, finalizeCalls };
+  }
+
+  const matches = matchesRequestedTransfer({
+    transaction: result.transaction,
+    transactionHash: transaction.hash,
+    signerAccountId: transaction.signer_id,
+    context: contextResult,
+  });
+  if (!matches) return { status: 400, finalizeCalls };
+
+  finalizeCalls += 1;
+  if (finalizeResult.error) {
+    return {
+      status: isDuplicateTransactionError(finalizeResult.error) ? 409 : 500,
+      finalizeCalls,
+    };
+  }
+  return { status: 200, finalizeCalls };
+}
+
+test("mock boundary does not finalize an expired, revoked, or unknown share", async () => {
+  const result = await runMockVerification({ contextResult: null });
+  assert.deepEqual(result, { status: 404, finalizeCalls: 0 });
+});
+
+test("mock boundary does not finalize a pending or unreadable RPC result", async () => {
+  for (const rpcResponse of [
+    { ok: false, payload: null },
+    { ok: true, unreadable: true, payload: null },
+    { ok: true, payload: { error: { message: "not indexed yet" } } },
+  ]) {
+    const result = await runMockVerification({ rpcResponse });
+    assert.equal(result.status, 202);
+    assert.equal(result.finalizeCalls, 0);
+  }
+});
+
+test("mock boundary does not finalize an incorrect transfer", async () => {
+  const result = await runMockVerification({
+    rpcResponse: {
+      ok: true,
+      payload: {
+        result: {
+          ...finalResult,
+          transaction: {
+            ...transaction,
+            actions: [{ Transfer: { deposit: "123" } }],
+          },
+        },
+      },
+    },
+  });
+  assert.deepEqual(result, { status: 400, finalizeCalls: 0 });
+});
+
+test("mock boundary finalizes a matching fixture exactly once", async () => {
+  const result = await runMockVerification();
+  assert.deepEqual(result, { status: 200, finalizeCalls: 1 });
+});
+
+test("mock boundary maps a duplicate database response to conflict", async () => {
+  const result = await runMockVerification({
+    finalizeResult: { data: null, error: { code: "23505" } },
+  });
+  assert.deepEqual(result, { status: 409, finalizeCalls: 1 });
+});
