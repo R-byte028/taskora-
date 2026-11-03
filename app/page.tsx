@@ -581,5 +581,5 @@ export default function Dashboard() {
 }
 
 function LockIconText() {
-  return <><Clock3 size={17}/> Wallet connection and transaction verification are not live yet. Shared links are requests, not proof that funds have been received.</>;
+  return <><Clock3 size={17}/> NEAR testnet checkout is available for eligible requests. A request is marked paid only after server-side transaction verification.</>;
 }
