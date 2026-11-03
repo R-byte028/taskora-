@@ -239,8 +239,17 @@ export default function Dashboard() {
     await loadJobs();
   }
   async function openRequestFor(job: JobView) {
+    if (job.status !== "completed") {
+      notify("Only completed jobs can have a payment request.");
+      return;
+    }
     if (job.currency !== "NEAR") {
       notify("Client checkout currently supports NEAR testnet only. Create a NEAR-denominated job first.");
+      return;
+    }
+    if (paymentRequests.some((request) => request.job_id === job.id)) {
+      notify("A payment request already exists for this job. Manage or reshare it from Invoices.");
+      setNav("Invoices");
       return;
     }
     setSelected(job.id);
@@ -250,11 +259,26 @@ export default function Dashboard() {
   async function savePaymentRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const job = jobs.find((item) => item.id === selected);
-    if (!job || !job.client_id || job.currency !== "NEAR") {
+    if (!job || job.status !== "completed" || !job.client_id || job.currency !== "NEAR") {
       notify("Choose a completed NEAR-denominated job. Client checkout currently supports NEAR testnet only.");
       return;
     }
     setSaving(true);
+    const { data: existingRequest, error: existingRequestError } = await supabase
+      .from("payment_requests").select("id").eq("job_id", job.id).limit(1).maybeSingle();
+    if (existingRequestError) {
+      setSaving(false);
+      notify("Couldn't verify whether a payment request already exists. Please try again.");
+      return;
+    }
+    if (existingRequest) {
+      setSaving(false);
+      setRequestOpen(false);
+      notify("A payment request already exists for this job. Manage or reshare it from Invoices.");
+      setNav("Invoices");
+      await loadJobs();
+      return;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.replace("/login"); return; }
     const summary = requestNote.trim() || job.description || "Work completed as agreed.";
