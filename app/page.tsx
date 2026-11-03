@@ -42,6 +42,8 @@ export default function Dashboard() {
   const [requestOpen, setRequestOpen] = useState(false);
   const [completionJob, setCompletionJob] = useState<JobView | null>(null);
   const [completionAcknowledged, setCompletionAcknowledged] = useState(false);
+  const [amountEditJob, setAmountEditJob] = useState<JobView | null>(null);
+  const [editedAmount, setEditedAmount] = useState("");
   const [toast, setToast] = useState("");
   const [nav, setNav] = useState<PageName>("Overview");
   const [collapsed, setCollapsed] = useState(false);
@@ -224,6 +226,55 @@ export default function Dashboard() {
     setCompletionJob(null);
     setCompletionAcknowledged(false);
     notify("Job completed. You can now prepare its crypto payment request.");
+    await loadJobs();
+  }
+
+  async function saveCompletedJobAmount(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const job = amountEditJob;
+    const amount = Number(editedAmount);
+    if (!job || job.status !== "completed" || !Number.isFinite(amount) || amount <= 0 || saving) return;
+
+    const relatedRequests = paymentRequests.filter((request) => request.job_id === job.id);
+    if (relatedRequests.some((request) => request.status !== "draft")) {
+      notify("This amount is locked because a payment request has already been shared or paid.");
+      setAmountEditJob(null);
+      return;
+    }
+
+    setSaving(true);
+    const { data: updatedJob, error: jobError } = await supabase
+      .from("jobs")
+      .update({ amount })
+      .eq("id", job.id)
+      .eq("status", "completed")
+      .select("id")
+      .maybeSingle();
+
+    if (jobError || !updatedJob) {
+      setSaving(false);
+      notify(jobError?.message ?? "This job could not be edited. Refresh and try again.");
+      return;
+    }
+
+    const { error: requestError } = await supabase
+      .from("payment_requests")
+      .update({ amount })
+      .eq("job_id", job.id)
+      .eq("status", "draft");
+
+    if (requestError) {
+      await supabase.from("jobs").update({ amount: Number(job.amount) }).eq("id", job.id).eq("status", "completed");
+      setSaving(false);
+      notify("The invoice drafts could not be updated, so the job amount was restored. Please try again.");
+      await loadJobs();
+      return;
+    }
+
+    setSaving(false);
+    setAmountEditJob(null);
+    setEditedAmount("");
+    notify("Completed job amount and draft invoices updated.");
     await loadJobs();
   }
 
@@ -464,7 +515,7 @@ export default function Dashboard() {
         <div className="job-actions">
           <span className={"status " + (job.status === "completed" ? "complete" : job.status === "cancelled" ? "pending" : "progress")}>{job.status.replace("_", " ")}</span>
           {job.status === "in_progress" && <><button className="mini-action" onClick={() => void markComplete(job)}>Mark complete</button><button className="mini-action danger-action" onClick={() => void cancelJob(job)}>Cancel job</button></>}
-          {job.status === "completed" && job.currency === "NEAR" && <button className="mini-action" onClick={() => void openRequestFor(job)}>Request payment</button>}
+          {job.status === "completed" && job.currency === "NEAR" && <><button className="mini-action" onClick={() => { setAmountEditJob(job); setEditedAmount(String(job.amount)); }}>Edit amount</button><button className="mini-action" onClick={() => void openRequestFor(job)}>Request payment</button></>}
           {job.status === "completed" && job.currency === "USDC" && <span className="subtle-note">NEAR testnet checkout only</span>}
         </div>
         <JobMilestones jobId={job.id}/>
@@ -618,6 +669,7 @@ export default function Dashboard() {
 
     {completionJob && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget&&!saving)setCompletionJob(null);}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="complete-job-title"><div className="modal-head"><div><p className="eyebrow">JOB COMPLETION</p><h2 id="complete-job-title">Complete this job?</h2></div><button className="close" onClick={()=>setCompletionJob(null)} aria-label="Close" disabled={saving}><X size={16}/></button></div><div className="form"><div className="completion-summary"><strong>{completionJob.title}</strong><span>{completionJob.client_name} · {cryptoAmount(Number(completionJob.amount),completionJob.currency)}</span></div><p className="form-hint">Before confirming, make sure the agreed work has been delivered and any useful progress notes or evidence have been recorded in this job. Completion does not mean payment has been received.</p><label className="completion-confirm"><input type="checkbox" checked={completionAcknowledged} onChange={(event)=>setCompletionAcknowledged(event.target.checked)}/><span>I confirm this work has been completed and delivered to the client.</span></label><div className="form-actions"><button type="button" className="secondary" disabled={saving} onClick={()=>setCompletionJob(null)}>Not yet</button><button type="button" className="primary" disabled={saving||!completionAcknowledged} onClick={()=>void confirmJobCompletion()}>{saving?"Completing…":"Confirm completion"}</button></div></div></div></div>}
 
+    {amountEditJob && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget&&!saving)setAmountEditJob(null);}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-job-amount-title"><div className="modal-head"><div><p className="eyebrow">COMPLETED JOB</p><h2 id="edit-job-amount-title">Edit agreed amount</h2></div><button className="close" onClick={()=>setAmountEditJob(null)} aria-label="Close" disabled={saving}><X size={16}/></button></div><form className="form" onSubmit={saveCompletedJobAmount}><div className="completion-summary"><strong>{amountEditJob.title}</strong><span>{amountEditJob.client_name} · NEAR testnet</span></div><div className="field"><label htmlFor="edit-job-amount">New amount (NEAR)</label><input id="edit-job-amount" type="number" required min="0.000001" step="any" value={editedAmount} onChange={(event)=>setEditedAmount(event.target.value)} /></div><p className="form-hint">This updates the completed job and its draft payment requests. The amount is locked after a request is shared or paid. Use a small amount for this testnet checkout; no real funds are involved.</p><div className="form-actions"><button type="button" className="secondary" disabled={saving} onClick={()=>setAmountEditJob(null)}>Cancel</button><button type="submit" className="primary" disabled={saving||!editedAmount||!Number.isFinite(Number(editedAmount))||Number(editedAmount)<=0}>{saving?"Saving…":"Save amount"}</button></div></form></div></div>}
     {requestOpen && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget)setRequestOpen(false);}}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">TASKORA ASSISTANT</p><h2>Prepare a crypto invoice</h2></div><button className="close" onClick={()=>setRequestOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={savePaymentRequest}>
       <div className="field"><label htmlFor="request-job">Completed job</label><select id="request-job" required value={selected} onChange={(event)=>setSelected(event.target.value)}>{completedJobs.filter((job)=>isCryptoAsset(job.currency)).map((job)=><option key={job.id} value={job.id}>{job.title} — {job.client_name} ({cryptoAmount(Number(job.amount),job.currency)})</option>)}</select></div>
       <div className="field"><label htmlFor="request-note">Work summary for your client</label><textarea id="request-note" maxLength={4000} placeholder="Summarise what was delivered..." value={requestNote} onChange={(event)=>setRequestNote(event.target.value)}/></div>
