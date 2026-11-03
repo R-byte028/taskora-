@@ -119,7 +119,9 @@ export default function JobMilestones({ jobId }: { jobId: string }) {
       <span><ClipboardList size={14}/> Work plan <small>{loading ? "Loading progress…" : done + "/" + milestones.length + " milestones · " + completedItems + "/" + totalItems + " tasks"}</small></span>
       {expanded ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
     </button>
+    {!loading && milestones.length > 0 && <div className="milestone-overview"><div className="milestone-progress-track" role="progressbar" aria-label="Job milestone progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: progress + "%" }}/></div><small>{progress}% of milestones completed</small></div>}
     {expanded && <div className="milestone-content">
+      {loadError && <p className="milestone-error" role="alert">{loadError} <button type="button" onClick={() => void load()}>Retry</button></p>}
       {loading ? <p className="milestone-muted">Loading work plan…</p> : milestones.length === 0
         ? <p className="milestone-muted">No milestones yet. Break this job into smaller stages.</p>
         : milestones.map((milestone) => {
