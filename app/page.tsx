@@ -40,6 +40,8 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
+  const [completionJob, setCompletionJob] = useState<JobView | null>(null);
+  const [completionAcknowledged, setCompletionAcknowledged] = useState(false);
   const [toast, setToast] = useState("");
   const [nav, setNav] = useState<PageName>("Overview");
   const [collapsed, setCollapsed] = useState(false);
@@ -193,17 +195,35 @@ export default function Dashboard() {
     await loadJobs();
   }
 
-  async function markComplete(job: JobView) {
+  function markComplete(job: JobView) {
+    if (job.status !== "in_progress") return;
     if (!isCryptoAsset(job.currency)) {
       notify("This is an older fiat record. Create a new job with a crypto amount.");
       return;
     }
-    const { error } = await supabase.from("jobs").update({
+    setCompletionAcknowledged(false);
+    setCompletionJob(job);
+  }
+
+  async function confirmJobCompletion() {
+    const job = completionJob;
+    if (!job || !completionAcknowledged || saving) return;
+    setSaving(true);
+    const { data, error } = await supabase.from("jobs").update({
       status: "completed" satisfies JobStatus,
       completed_at: new Date().toISOString(),
-    }).eq("id", job.id);
-    if (error) { notify(error.message); return; }
-    notify("Job marked as completed.");
+    }).eq("id", job.id).eq("status", "in_progress").select("id").maybeSingle();
+    setSaving(false);
+    if (error) { notify("Couldn't complete this job: " + error.message); return; }
+    if (!data) {
+      setCompletionJob(null);
+      notify("This job has already changed. Refreshing its latest status.");
+      await loadJobs();
+      return;
+    }
+    setCompletionJob(null);
+    setCompletionAcknowledged(false);
+    notify("Job completed. You can now prepare its crypto payment request.");
     await loadJobs();
   }
 
@@ -571,6 +591,8 @@ export default function Dashboard() {
       <div className="field"><label htmlFor="description">Work description (optional)</label><textarea id="description" maxLength={4000} placeholder="Add a short note..." value={form.description} onChange={(event)=>setForm({...form,description:event.target.value})}/></div>
       <div className="form-actions"><button type="button" className="secondary" onClick={()=>setOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving?"Saving…":<><Plus size={14}/> Add job</>}</button></div>
     </form></div></div>}
+
+    {completionJob && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget&&!saving)setCompletionJob(null);}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="complete-job-title"><div className="modal-head"><div><p className="eyebrow">JOB COMPLETION</p><h2 id="complete-job-title">Complete this job?</h2></div><button className="close" onClick={()=>setCompletionJob(null)} aria-label="Close" disabled={saving}><X size={16}/></button></div><div className="form"><div className="completion-summary"><strong>{completionJob.title}</strong><span>{completionJob.client_name} · {cryptoAmount(Number(completionJob.amount),completionJob.currency)}</span></div><p className="form-hint">Before confirming, make sure the agreed work has been delivered and any useful progress notes or evidence have been recorded in this job. Completion does not mean payment has been received.</p><label className="completion-confirm"><input type="checkbox" checked={completionAcknowledged} onChange={(event)=>setCompletionAcknowledged(event.target.checked)}/><span>I confirm this work has been completed and delivered to the client.</span></label><div className="form-actions"><button type="button" className="secondary" disabled={saving} onClick={()=>setCompletionJob(null)}>Not yet</button><button type="button" className="primary" disabled={saving||!completionAcknowledged} onClick={()=>void confirmJobCompletion()}>{saving?"Completing…":"Confirm completion"}</button></div></div></div></div>}
 
     {requestOpen && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget)setRequestOpen(false);}}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">TASKORA ASSISTANT</p><h2>Prepare a crypto invoice</h2></div><button className="close" onClick={()=>setRequestOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={savePaymentRequest}>
       <div className="field"><label htmlFor="request-job">Completed job</label><select id="request-job" required value={selected} onChange={(event)=>setSelected(event.target.value)}>{completedJobs.filter((job)=>isCryptoAsset(job.currency)).map((job)=><option key={job.id} value={job.id}>{job.title} — {job.client_name} ({cryptoAmount(Number(job.amount),job.currency)})</option>)}</select></div>
