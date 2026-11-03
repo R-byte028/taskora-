@@ -88,3 +88,13 @@ See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./doc
 Use [HACKATHON.md](./HACKATHON.md) for the full implementation status and judge walkthrough. The demo should show one complete job lifecycle: create job → add milestone/checklist → record progress and evidence → confirm completion → create secure request → client opens request → NEAR testnet wallet transfer → server verifies finality → request displays paid. Also demonstrate that a duplicate request and a mismatched/reused transaction are rejected.
 
 **Demo status:** the NEAR wallet and verifier code is present, but do not claim a successful live payment until the complete flow has been tested against the deployed testnet backend.
+
+## Verifier regression tests
+
+Run the local, mock-only NEAR verifier guard suite with:
+
+```bash
+npm run test:near-verifier
+```
+
+The tests use fixed fixtures and injected mock responses. They cover payment-context validation, final-execution result shape, exact transfer matching, pending or malformed RPC responses, and duplicate or failed database-finalization outcomes. They do **not** contact NEAR RPC, connect to a wallet, submit a transaction, or call the deployed Supabase Edge Function. A passing suite is regression coverage for the guard rules, not proof of a live payment or an end-to-end integration test.
