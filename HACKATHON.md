@@ -16,7 +16,11 @@ Taskora is a crypto-first job-to-payment assistant for freelancers and small bus
 - [x] Separate USDC and NEAR value display.
 - [x] Account sign-up, sign-in and email confirmation callback.
 - [x] Protected workspace routes and sign-out.
-- [x] Create jobs and mark jobs complete.
+- [x] Create crypto-denominated jobs and track their lifecycle.
+- [x] Confirm job completion explicitly before changing its status; completion is kept separate from payment confirmation.
+- [x] Manage job milestones and checklist items with progress tracking.
+- [x] Record dated work updates and attach private work evidence (images, PDF or text files).
+- [x] Prevent duplicate payment requests for the same job.
 - [x] Prepare and save crypto payment requests for completed jobs.
 - [x] Generate secure client share links and retry saved drafts.
 - [x] Review requests and revoke active client links.
@@ -52,13 +56,31 @@ NEAR must be part of the actual payment experience, not merely mentioned in the 
 
 ## Current limitations
 
-The crypto-first dashboard, guided assistant preview and secure payment-request link flow are committed. The crypto-only currency migration is applied. The authenticated flow still needs live browser testing. The assistant is currently rule-based and is not yet an AI model/agent integration. Wallet connection and on-chain payments are not implemented. Public request pages do not collect funds.
+The crypto-first dashboard, milestone/checklist workflow, work-evidence timeline, explicit job-completion confirmation, secure payment-request links and NEAR testnet checkout/verifier code are committed. The NEAR checkout has not yet been confirmed through a complete live-wallet test against the deployed backend. The assistant is currently rule-based and is not yet an AI model/agent integration. USDC settlement is not enabled. Do not treat a submitted transaction as paid until the server-side verifier confirms final execution.
 
 ## Intended judge walkthrough
 
 1. Create an account and sign in to the private Taskora workspace.
 2. Create a job and select USDC or NEAR.
 3. Mark the work complete.
-4. Create a secure crypto payment-request link and open it in a private browser session.
-5. Revoke the link from the provider dashboard and confirm the old link becomes unavailable.
-6. Once wallet integration is complete, perform a testnet payment and show the verified transaction reference and updated payment status.
+4. Add a milestone, checklist item and work-progress note; attach a small evidence file and confirm it appears in the job history.
+5. Confirm job completion, then create a secure NEAR payment-request link and open it in a separate browser session.
+6. Connect a NEAR testnet wallet, approve the exact transfer and verify the transaction. Expected result: Taskora shows paid only after server-side finality and amount/recipient/signer checks succeed.
+7. Revoke a separate active request link and confirm the old link becomes unavailable.
+
+
+## Judge-ready demo acceptance checks
+
+| Demo action | Expected result |
+| --- | --- |
+| Sign in and create a NEAR job | The job appears in My Jobs with its NEAR amount clearly labelled. |
+| Add milestones and checklist items | The job shows the saved milestones and checklist progress after refresh. |
+| Add a progress note and evidence file | The update appears in the job timeline; the attachment opens only through its signed link. |
+| Confirm job completion | A confirmation step is required; the job moves to completed only after explicit acknowledgement. |
+| Create a payment request | A private expiring link is generated; a second request for the same job is blocked. |
+| Open the link as the client | The client sees the amount, work summary, destination and NEAR testnet disclosure. |
+| Submit a valid testnet transfer | The request becomes paid only after server-side final transaction verification. |
+| Submit a mismatched or reused transaction | Verification rejects it; the request is not marked paid. |
+| Revoke the share link | The previously issued link no longer reveals the request. |
+
+A live wallet demonstration is a release gate: do not record a successful payment demo until the deployed Edge Function, database functions and NEAR testnet RPC verification have all been exercised end to end.
