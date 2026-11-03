@@ -57,11 +57,11 @@ Taskora is not a live payment product yet.
 
 - Secure client-facing share links use random server-side tokens; only SHA-256 hashes are stored.
 - Secure-sharing, revocation and crypto-only currency migrations are applied to the Taskora Supabase project.
-- Wallet connection, payment collection and on-chain transaction verification are not implemented.
-- Shared links are requests for payment, not proof that funds have been received.
+- NEAR Connect wallet integration, NEAR testnet transfer submission and a server-side final-transaction verifier are implemented in the current branch, but a complete live-wallet end-to-end test is still required before treating the flow as demo-verified.
+- Shared links are requests for payment, not proof that funds have been received. A request is marked paid only after the backend verifies final transaction execution, signer, recipient and exact amount.
 - Confirmed-payment totals must only include authoritative on-chain verification.
 - The Assistant currently uses transparent guided workflow rules; it is not connected to an AI model or autonomous agent runtime yet.
-- USDC settlement on NEAR requires verification of the exact supported token contract and network deployment.
+- USDC settlement on NEAR is not enabled; the exact token contract and network deployment must be verified first.
 
 Do not use the current build to collect real funds.
 
@@ -78,7 +78,13 @@ Do not use the current build to collect real funds.
 2. Provider marks the work complete.
 3. Taskora prepares a secure crypto payment request.
 4. Client reviews the request through an expiring share link.
-5. Client connects a NEAR-compatible wallet and approves the correct asset transfer.
-6. A server-side verifier confirms final on-chain execution before the request is marked paid.
+5. Client connects a NEAR-compatible wallet and approves the exact NEAR testnet transfer.
+6. A server-side verifier confirms final on-chain execution, signer, recipient and exact amount before the request is marked paid.
 
 See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
+
+## Hackathon demo checklist
+
+Use [HACKATHON.md](./HACKATHON.md) for the full implementation status and judge walkthrough. The demo should show one complete job lifecycle: create job → add milestone/checklist → record progress and evidence → confirm completion → create secure request → client opens request → NEAR testnet wallet transfer → server verifies finality → request displays paid. Also demonstrate that a duplicate request and a mismatched/reused transaction are rejected.
+
+**Demo status:** the NEAR wallet and verifier code is present, but do not claim a successful live payment until the complete flow has been tested against the deployed testnet backend.
