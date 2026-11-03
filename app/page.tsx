@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import JobMilestones from "@/components/job-milestones";
+import JobUpdates from "@/components/job-updates";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type JobRow = Tables<"jobs">;
@@ -423,6 +424,7 @@ export default function Dashboard() {
           {job.status === "completed" && job.currency === "USDC" && <span className="subtle-note">NEAR testnet checkout only</span>}
         </div>
         <JobMilestones jobId={job.id}/>
+        <JobUpdates jobId={job.id}/>
       </div>);
 
   const requestRows = (items: PaymentRequestView[], invoiceMode = false) => items.length === 0
