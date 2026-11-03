@@ -106,6 +106,53 @@ export type Database = {
         }
         Relationships: []
       }
+      job_milestones: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          job_id: string
+          sort_order: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          job_id: string
+          sort_order?: number
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          job_id?: string
+          sort_order?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_milestones_job_owner_fk"
+            columns: ["job_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           amount: number
@@ -152,6 +199,50 @@ export type Database = {
             columns: ["client_id", "user_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      milestone_checklist_items: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_completed: boolean
+          milestone_id: string
+          sort_order: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          milestone_id: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          milestone_id?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestone_checklist_items_milestone_owner_fk"
+            columns: ["milestone_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "job_milestones"
             referencedColumns: ["id", "user_id"]
           },
         ]
@@ -358,8 +449,9 @@ export type Database = {
           p_payment_request_id: string
           p_receiver_account_id: string
           p_signer_account_id: string
+          p_token: string
           p_transaction_hash: string
-          p_verification_evidence?: Json
+          p_verification_evidence: Json
         }
         Returns: string
       }
