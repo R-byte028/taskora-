@@ -83,11 +83,15 @@ Deno.serve(async (req: Request) => {
     const result = payload.result;
     const transaction = result.transaction;
     const status = result.status;
-    const successful = status && (
-      Object.prototype.hasOwnProperty.call(status, "SuccessValue") ||
-      Object.prototype.hasOwnProperty.call(status, "SuccessReceiptId")
-    );
-    if (!transaction || !successful) return json({ error: "The NEAR transaction did not complete successfully." }, 400);
+    // FINAL returns the final execution result across the transaction and its receipts.
+    // SuccessReceiptId is an intermediate receipt hand-off, not proof that payment settled.
+    const successful = status && Object.prototype.hasOwnProperty.call(status, "SuccessValue");
+    if (!transaction || !successful) {
+      return json({ error: "The NEAR transaction did not complete successfully at finality." }, 400);
+    }
+    if (transaction.hash !== transactionHash) {
+      return json({ error: "The NEAR node returned a different transaction hash." }, 400);
+    }
 
     const transfer = transaction.actions?.length === 1 ? transaction.actions[0]?.Transfer : null;
     if (
