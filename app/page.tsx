@@ -390,6 +390,31 @@ export default function Dashboard() {
     await loadJobs();
   }
 
+  async function deleteDraftRequest(requestId: string) {
+    if (saving) return;
+    if (!window.confirm("Permanently delete this draft payment request? This cannot be undone. Only drafts that have not been shared or paid can be deleted.")) return;
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("payment_requests")
+      .delete()
+      .eq("id", requestId)
+      .eq("status", "draft")
+      .select("id")
+      .maybeSingle();
+    setSaving(false);
+    if (error) {
+      notify("Couldn't delete this draft. It may have payment history or may no longer be a draft.");
+      return;
+    }
+    if (!data) {
+      notify("This request is no longer a draft. Refreshing its latest status.");
+      await loadJobs();
+      return;
+    }
+    notify("Draft payment request deleted.");
+    await loadJobs();
+  }
+
 
   async function sendAssistantMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -530,6 +555,7 @@ export default function Dashboard() {
           <span className={"status " + (request.status === "shared" ? "complete" : request.status === "paid" ? "paid" : "pending")}>{request.status}</span>
           {request.status === "draft" && request.currency === "NEAR" && <button className="mini-action" disabled={saving} onClick={() => void shareDraft(request.id)}>Share link</button>}
           {request.status === "draft" && request.currency === "USDC" && <span className="subtle-note">USDC checkout is not enabled yet</span>}
+          {request.status === "draft" && <button className="mini-action danger-action" disabled={saving} onClick={() => void deleteDraftRequest(request.id)}>Delete draft</button>}
           {request.status === "shared" && <button className="mini-action danger-action" onClick={() => void revokeShare(request.id)}>Revoke link</button>}
           {request.status === "shared" && <span className="subtle-note">Awaiting verified on-chain payment</span>}
           {!isCryptoAsset(request.currency) && <span className="subtle-note">Recreate this legacy request in crypto</span>}
