@@ -153,6 +153,50 @@ export type Database = {
           },
         ]
       }
+      job_updates: {
+        Row: {
+          attachment_mime_type: string | null
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_size: number | null
+          content: string
+          created_at: string
+          id: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          attachment_mime_type?: string | null
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          content: string
+          created_at?: string
+          id?: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          attachment_mime_type?: string | null
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          content?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_updates_job_owner_fk"
+            columns: ["job_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           amount: number
