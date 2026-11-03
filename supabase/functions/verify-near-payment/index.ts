@@ -76,7 +76,14 @@ Deno.serve(async (req: Request) => {
       return json({ status: "pending", message: "The network verifier returned an unreadable response. Try again shortly." }, 202);
     }
 
-    if (!rpc.ok || payload.error || !payload.result) {
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      Array.isArray(payload) ||
+      !rpc.ok ||
+      payload.error ||
+      !payload.result
+    ) {
       return json({ status: "pending", message: "The transaction is not yet available at finality. Try again shortly." }, 202);
     }
 
