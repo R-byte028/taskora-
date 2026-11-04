@@ -60,6 +60,27 @@ test("live verifier rejects malformed verification fields", async () => {
   assert.match(body?.error ?? "", /invalid payment verification details/i);
 });
 
+
+test("live verifier rejects a JSON null request body", async () => {
+  const { response, body } = await request({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "null",
+  });
+  assert.equal(response.status, 400);
+  assert.match(body?.error ?? "", /invalid payment verification details/i);
+});
+
+test("live verifier rejects a JSON array request body", async () => {
+  const { response, body } = await request({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "[]",
+  });
+  assert.equal(response.status, 400);
+  assert.match(body?.error ?? "", /invalid payment verification details/i);
+});
+
 test("live verifier rejects an unknown synthetic payment token", async () => {
   const { response, body } = await request({
     method: "POST",
