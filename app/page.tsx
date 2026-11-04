@@ -365,6 +365,27 @@ export default function Dashboard() {
     await loadJobs();
   }
 
+  async function copyExistingShare(requestId: string) {
+    setSaving(true);
+    try {
+      const response = await fetch("/api/payment-requests/" + requestId + "/share", { method: "GET", cache: "no-store" });
+      const result = await response.json() as { shareUrl?: string; error?: string };
+      if (!response.ok || !result.shareUrl) {
+        notify(result.error ?? "Couldn't retrieve the existing client link.");
+        return;
+      }
+      setShareUrl(result.shareUrl);
+      try {
+        await navigator.clipboard.writeText(result.shareUrl);
+        notify("Existing client link copied. It has not been replaced.");
+      } catch {
+        notify("Existing link retrieved. Use Copy link in the confirmation.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function revokeShare(requestId: string) {
     if (!window.confirm("Revoke this client link? The existing link will stop working, but the request will remain saved.")) return;
     const response = await fetch("/api/payment-requests/" + requestId + "/revoke", { method: "POST" });
@@ -541,7 +562,8 @@ export default function Dashboard() {
           {request.status === "draft" && request.currency === "NEAR" && <button className="mini-action" disabled={saving} onClick={() => void shareDraft(request.id)}>Share link</button>}
           {request.status === "draft" && request.currency === "USDC" && <span className="subtle-note">USDC checkout is not enabled yet</span>}
           {request.status === "draft" && <button className="mini-action danger-action" disabled={saving} onClick={() => void deleteDraftRequest(request.id)}>Delete draft</button>}
-          {request.status === "shared" && <button className="mini-action danger-action" onClick={() => void revokeShare(request.id)}>Revoke link</button>}
+          {request.status === "shared" && <button className="mini-action" disabled={saving} onClick={() => void copyExistingShare(request.id)}><Copy size={12}/> Copy link</button>}
+          {request.status === "shared" && <button className="mini-action danger-action" disabled={saving} onClick={() => void revokeShare(request.id)}>Revoke link</button>}
           {request.status === "shared" && <span className="subtle-note">Awaiting verified on-chain payment</span>}
           {!isCryptoAsset(request.currency) && <span className="subtle-note">Recreate this legacy request in crypto</span>}
         </div>
