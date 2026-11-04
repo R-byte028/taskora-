@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:near-verifier": "node --test tests/near-payment-verifier.test.mjs"
+    "test:near-verifier": "node --test tests/near-payment-verifier.test.mjs",
+    "test:near-verifier:live": "node --test tests/near-payment-verifier-live.test.mjs"
   },
   "dependencies": {
     "next": "15.5.28",
