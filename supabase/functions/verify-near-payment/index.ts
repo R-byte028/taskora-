@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { buildNearTransactionStatusParams } from "../../../lib/near-payment-verifier-guards.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,7 +65,7 @@ Deno.serve(async (req: Request) => {
           jsonrpc: "2.0",
           id: "taskora-payment-verifier",
           method: "EXPERIMENTAL_tx_status",
-          params: buildNearTransactionStatusParams(transactionHash, signerAccountId),
+          params: { tx_hash: transactionHash, sender_account_id: signerAccountId, wait_until: "FINAL" },
         }),
         signal: AbortSignal.timeout(10_000),
       });
