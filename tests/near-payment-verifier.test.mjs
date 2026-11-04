@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildNearTransactionStatusParams,
   hasValidPaymentContext,
   isFinalSuccessfulExecution,
   matchesRequestedTransfer,
@@ -25,6 +26,17 @@ const finalResult = {
   status: { SuccessValue: "" },
   transaction_outcome: { block_hash: "block-1", block_height: 10 },
 };
+
+test("builds the current NEAR RPC transaction lookup with object params and FINAL wait level", () => {
+  assert.deepEqual(
+    buildNearTransactionStatusParams(transaction.hash, transaction.signer_id),
+    {
+      tx_hash: transaction.hash,
+      sender_account_id: transaction.signer_id,
+      wait_until: "FINAL",
+    },
+  );
+});
 
 test("accepts a matching final NEAR transfer", () => {
   assert.equal(hasValidPaymentContext(context), true);
