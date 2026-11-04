@@ -35,19 +35,19 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 ## Verification completed
 
 - [x] Mock-only verifier regression suite: 17 tests passed in the recorded run.
-- [x] Live Edge Function negative-path smoke suite: 5 tests passed in the recorded run. These use synthetic invalid data only and do not submit a transaction.
+- [x] Live Edge Function negative-path smoke suite: 7 tests passed after deploying verifier version 5. These use synthetic invalid data only and do not submit a transaction. These use synthetic invalid data only and do not submit a transaction.
 - [x] Latest Vercel preview for the current feature branch completed successfully.
 - [x] Latest preview login route returned HTTP 200.
 - [x] Database function metadata and execute grants for the atomic amount-update RPC were checked.
 
-These checks do not prove a successful end-to-end payment. No successful live payment has been demonstrated, and the deployed verifier function may not yet contain every latest source guard.
+These checks do not prove a successful end-to-end payment. No successful live payment has been demonstrated. The deployed verifier is version 5 and includes malformed JSON-RPC response and non-object request-body guards.
 
 ## Remaining work
 
 - [ ] Browser-test sign-up, email confirmation, sign-in and sign-out.
 - [ ] Browser-test secure link creation, expiry, revocation and invalid-link handling.
-- [ ] Review public checkout data minimisation and privacy.
-- [ ] Reconcile the deployed Edge Function with the latest reviewed source before any release.
+- [x] Minimise public checkout data: public RPCs no longer populate client/provider names, job title or private work summary.
+- [x] Reconcile and deploy the reviewed verifier source as Edge Function version 5; keep `verify_jwt = false` because the endpoint validates share tokens in its own handler.
 - [ ] Add a safe, deterministic demonstration of payment verification that does not require real funds or a real wallet transaction.
 - [ ] Connect an actual AI service/agent runtime; the current Assistant is a guided, rule-based workflow preview.
 - [ ] Confirm the exact USDC token contract and supported network before considering any future USDC settlement.
@@ -59,7 +59,7 @@ A wallet connection or client-side success message is never proof of payment. Th
 
 ## Current limitations
 
-The job workflow, milestones/checklists, evidence timeline, completion confirmation, secure payment links, NEAR testnet checkout code and server-side verifier are committed. The mock regression tests and live negative-path HTTP tests pass, but the complete successful payment flow has not been demonstrated. The Assistant is not yet an AI model or autonomous agent. USDC settlement and mainnet are disabled.
+The job workflow, milestones/checklists, evidence timeline, completion confirmation, secure payment links, NEAR testnet checkout code and server-side verifier are committed. The 17 mock regression tests and 7 live negative-path HTTP tests pass, and the deployed Edge Function is version 5. The complete successful payment flow has not been demonstrated. The Assistant is not yet an AI model or autonomous agent. USDC settlement and mainnet are disabled.
 
 ## Judge walkthrough
 
