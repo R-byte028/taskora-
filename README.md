@@ -98,3 +98,11 @@ npm run test:near-verifier
 ```
 
 The tests use fixed fixtures and injected mock responses. They cover payment-context validation, final-execution result shape, exact transfer matching, pending or malformed RPC responses, and duplicate or failed database-finalization outcomes. They do **not** contact NEAR RPC, connect to a wallet, submit a transaction, or call the deployed Supabase Edge Function. A passing suite is regression coverage for the guard rules, not proof of a live payment or an end-to-end integration test.
+
+The live negative-path smoke suite checks the deployed Edge Function's HTTP boundary using synthetic, non-existent payment data only:
+
+```bash
+npm run test:near-verifier:live
+```
+
+It checks method handling, content type, malformed JSON, invalid fields and rejection of an unknown synthetic token. It does not submit a transaction, use a wallet, or exercise successful payment finalization. It requires network access to the configured Taskora Supabase function URL; override it with `TASKORA_VERIFIER_URL` when testing another environment.
