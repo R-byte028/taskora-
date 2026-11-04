@@ -81,7 +81,7 @@ Do not use the current build to collect real funds.
 5. Client reviews a minimal public checkout page through an expiring share link.
 6. The server-side verifier is designed to confirm final execution, signer, recipient and exact amount before marking a request paid.
 
-The verifier has mock regression and live negative-path coverage, but a successful end-to-end payment has not been demonstrated. Do not submit a wallet transaction or use real funds for the current review.
+The verifier is deployed as Supabase Edge Function version 5. Its mock regression suite has 17 passing tests and its live negative-path suite has 7 passing tests. A successful end-to-end payment has not been demonstrated. Do not submit a wallet transaction or use real funds for the current review.
 
 See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
 
@@ -107,4 +107,4 @@ The live negative-path smoke suite checks the deployed Edge Function's HTTP boun
 npm run test:near-verifier:live
 ```
 
-It checks method handling, content type, malformed JSON, invalid fields and rejection of an unknown synthetic token. It does not submit a transaction, use a wallet, or exercise successful payment finalization. It requires network access to the configured Taskora Supabase function URL; override it with `TASKORA_VERIFIER_URL` when testing another environment.
+It checks method handling, content type, malformed JSON, invalid fields, JSON `null` and array bodies, and rejection of an unknown synthetic token. It does not submit a transaction, use a wallet, or exercise successful payment finalization. It requires network access to the configured Taskora Supabase function URL; override it with `TASKORA_VERIFIER_URL` when testing another environment.
