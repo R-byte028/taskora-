@@ -35,6 +35,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid JSON request body." }, 400);
     }
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return json({ error: "Invalid payment verification details." }, 400);
+    }
+
     const { token, transactionHash, signerAccountId } = body;
     if (
       typeof token !== "string" || !/^[A-Za-z0-9_-]{40,128}$/.test(token) ||
