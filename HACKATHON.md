@@ -2,85 +2,87 @@
 
 ## Product
 
-Taskora is a crypto-first job-to-payment assistant for freelancers and small businesses. It organises client work, prepares secure crypto payment requests and is being built around the NEAR ecosystem.
+Taskora is a crypto-first workspace for freelancers and small businesses to record externally obtained client jobs, track delivery, confirm completion and prepare secure payment requests. It is not a job marketplace.
 
-**Currency rule:** USDC is the default USD-pegged crypto denomination. NEAR is also supported as a native asset. No fiat currency is accepted for new jobs, invoices or payment requests. Totals for different assets are never combined.
+**Settlement status:** NEAR testnet checkout and server-side verification code are implemented. Mainnet and USDC settlement are not enabled. Do not use real funds or describe this build as ready to collect payments. USDC may appear as a job denomination, but it is not a supported checkout asset.
 
 ## Implemented frontend
 
-- [x] Responsive overview dashboard.
-- [x] Collapsible desktop sidebar and mobile navigation drawer.
-- [x] Dedicated Overview, My Jobs, My Payments, Invoices and Assistant workspace views.
-- [x] Guided assistant preview reads live workspace records and routes users to relevant job/payment workflows.
-- [x] Crypto-denominated job creation using USDC or NEAR.
-- [x] Separate USDC and NEAR value display.
-- [x] Account sign-up, sign-in and email confirmation callback.
-- [x] Protected workspace routes and sign-out.
-- [x] Create crypto-denominated jobs and track their lifecycle.
-- [x] Confirm job completion explicitly before changing its status; completion is kept separate from payment confirmation.
-- [x] Manage job milestones and checklist items with progress tracking.
-- [x] Record dated work updates and attach private work evidence (images, PDF or text files).
-- [x] Prevent duplicate payment requests for the same job.
-- [x] Prepare and save crypto payment requests for completed jobs.
-- [x] Generate secure client share links and retry saved drafts.
-- [x] Review requests and revoke active client links.
-- [x] Clear disclosure that wallet payment collection is not live.
+- [x] Responsive overview dashboard, desktop sidebar and mobile navigation.
+- [x] Overview, My Jobs, My Payments, Invoices, Assistant and Settings views.
+- [x] Sign-up/sign-in flow and protected workspace.
+- [x] Create jobs and track their lifecycle.
+- [x] Explicit job-completion confirmation, separate from payment status.
+- [x] Milestones and checklist items with progress tracking.
+- [x] Dated work updates and private work-evidence attachments.
+- [x] Secure client payment-request links, draft retry and link revocation.
+- [x] Completed-job amount editing, guarded by a single atomic database operation.
+- [x] NEAR testnet wallet-connect and checkout UI.
+- [x] Clear testnet-only / not-for-real-funds boundary.
 
 ## Implemented backend
 
-- [x] Dedicated Taskora Supabase project.
-- [x] Profiles, clients, jobs and payment_requests tables.
-- [x] Row Level Security and owner-only policies.
-- [x] Automatic profile creation on Auth signup.
-- [x] Typed Supabase browser and server clients.
-- [x] Persistent job and payment-request workflows.
-- [x] Secure token-hash-based public request links and revocation.
-- [x] Crypto-only database currency constraints: USDC and NEAR, with USDC default.
+- [x] Supabase profiles, clients, jobs and payment_requests.
+- [x] Row Level Security and owner-only data access.
+- [x] Secure token-hash-based public payment links.
+- [x] Public checkout RPCs with share-token validation.
+- [x] NEAR testnet verification Edge Function.
+- [x] Final-execution, signer, recipient, action and exact-amount checks before payment finalization.
+- [x] Duplicate transaction protection and atomic payment finalization.
+- [x] Atomic completed-job amount update RPC; rejects changes once a related request is no longer draft.
+- [x] Anonymous direct table access to payment_requests revoked.
 
-## Remaining milestones
+## Verification completed
 
-- [ ] Test sign-up, email confirmation, sign-in and sign-out in a running browser.
-- [ ] Add edit/delete flows for clients and jobs.
-- [ ] Live-test secure link creation, sharing, revocation, expiry and invalid-link handling.
-- [ ] Connect an AI service/agent runtime to interpret natural-language requests and safely orchestrate approved Taskora actions.
-- [ ] Integrate a NEAR-compatible wallet connector.
-- [ ] Implement and verify native NEAR testnet transfers.
-- [ ] Confirm the exact USDC token contract and network deployment before enabling USDC transfers.
-- [ ] Verify transaction status from authoritative chain data.
-- [ ] Add payment loading, error and retry states.
-- [ ] Prepare a deterministic judge walkthrough and demo recording.
+- [x] Mock-only verifier regression suite: 17 tests passed in the recorded run.
+- [x] Live Edge Function negative-path smoke suite: 5 tests passed in the recorded run. These use synthetic invalid data only and do not submit a transaction.
+- [x] Latest Vercel preview for the current feature branch completed successfully.
+- [x] Latest preview login route returned HTTP 200.
+- [x] Database function metadata and execute grants for the atomic amount-update RPC were checked.
+
+These checks do not prove a successful end-to-end payment. No successful live payment has been demonstrated, and the deployed verifier function may not yet contain every latest source guard.
+
+## Remaining work
+
+- [ ] Browser-test sign-up, email confirmation, sign-in and sign-out.
+- [ ] Browser-test secure link creation, expiry, revocation and invalid-link handling.
+- [ ] Review public checkout data minimisation and privacy.
+- [ ] Reconcile the deployed Edge Function with the latest reviewed source before any release.
+- [ ] Add a safe, deterministic demonstration of payment verification that does not require real funds or a real wallet transaction.
+- [ ] Connect an actual AI service/agent runtime; the current Assistant is a guided, rule-based workflow preview.
+- [ ] Confirm the exact USDC token contract and supported network before considering any future USDC settlement.
+- [ ] Prepare final judge walkthrough, screenshots and demo recording.
 
 ## NEAR integration principle
 
-NEAR must be part of the actual payment experience, not merely mentioned in the interface. A frontend button or client-side state is not proof of payment. The backend must verify the final transaction, asset, recipient and exact amount before marking a request paid.
+A wallet connection or client-side success message is never proof of payment. The backend must independently verify final transaction execution, signer, recipient, asset/action and exact amount before a request can be marked paid.
 
 ## Current limitations
 
-The crypto-first dashboard, milestone/checklist workflow, work-evidence timeline, explicit job-completion confirmation, secure payment-request links and NEAR testnet checkout/verifier code are committed. The NEAR checkout has not yet been confirmed through a complete live-wallet test against the deployed backend. The assistant is currently rule-based and is not yet an AI model/agent integration. USDC settlement is not enabled. Do not treat a submitted transaction as paid until the server-side verifier confirms final execution.
+The job workflow, milestones/checklists, evidence timeline, completion confirmation, secure payment links, NEAR testnet checkout code and server-side verifier are committed. The mock regression tests and live negative-path HTTP tests pass, but the complete successful payment flow has not been demonstrated. The Assistant is not yet an AI model or autonomous agent. USDC settlement and mainnet are disabled.
 
-## Intended judge walkthrough
+## Judge walkthrough
 
-1. Create an account and sign in to the private Taskora workspace.
-2. Create a job and select USDC or NEAR.
-3. Mark the work complete.
-4. Add a milestone, checklist item and work-progress note; attach a small evidence file and confirm it appears in the job history.
-5. Confirm job completion, then create a secure NEAR payment-request link and open it in a separate browser session.
-6. Connect a NEAR testnet wallet, approve the exact transfer and verify the transaction. Expected result: Taskora shows paid only after server-side finality and amount/recipient/signer checks succeed.
-7. Revoke a separate active request link and confirm the old link becomes unavailable.
+1. Sign in to the Taskora workspace.
+2. Create a client job and record its agreed amount.
+3. Add milestones and checklist items, then record progress and evidence.
+4. Confirm completion and prepare a payment request.
+5. Open the client-facing request page and review the amount, destination and testnet disclosure.
+6. Demonstrate the verifier's acceptance rules with deterministic mock fixtures and the live negative-path smoke suite. Do not submit a wallet transaction or use real funds.
+7. Revoke a separate share link and confirm that the old link is no longer usable.
 
-
-## Judge-ready demo acceptance checks
+## Judge-ready acceptance checks
 
 | Demo action | Expected result |
 | --- | --- |
-| Sign in and create a NEAR job | The job appears in My Jobs with its NEAR amount clearly labelled. |
-| Add milestones and checklist items | The job shows the saved milestones and checklist progress after refresh. |
-| Add a progress note and evidence file | The update appears in the job timeline; the attachment opens only through its signed link. |
-| Confirm job completion | A confirmation step is required; the job moves to completed only after explicit acknowledgement. |
-| Create a payment request | A private expiring link is generated; a second request for the same job is blocked. |
-| Open the link as the client | The client sees the amount, work summary, destination and NEAR testnet disclosure. |
-| Submit a valid testnet transfer | The request becomes paid only after server-side final transaction verification. |
-| Submit a mismatched or reused transaction | Verification rejects it; the request is not marked paid. |
-| Revoke the share link | The previously issued link no longer reveals the request. |
+| Create a job | It appears in My Jobs with its denomination clearly labelled. |
+| Add milestones/checklist items | Saved progress remains after refresh. |
+| Add a work update and evidence | The update appears in the job history; evidence remains private. |
+| Confirm job completion | Explicit acknowledgement is required; completion does not imply payment. |
+| Edit a completed job amount | The atomic operation updates the job and draft requests together, or rejects the change if a request is already shared/paid. |
+| Create a payment request | A private share link is generated; duplicate requests are blocked. |
+| Open a client link | The client sees the request details and testnet-only disclosure. |
+| Run verifier regression tests | Valid fixture rules pass; malformed, pending, mismatched and duplicate cases are rejected. |
+| Revoke a share link | The previously issued link no longer reveals the request. |
 
-A live wallet demonstration is a release gate: do not record a successful payment demo until the deployed Edge Function, database functions and NEAR testnet RPC verification have all been exercised end to end.
+**Release gate:** do not claim successful payment collection or record a successful payment demo until the full integration has been independently reviewed and safely validated. Mainnet and real-fund collection remain out of scope for this build.
