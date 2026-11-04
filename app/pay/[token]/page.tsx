@@ -45,18 +45,15 @@ export default async function PublicPaymentRequestPage({ params }: PageProps) {
       <div className="client-card">
         <div className="client-brand"><span className="mark">t.</span> taskora</div>
         <div className="request-badge"><Clock3 size={14}/> PAYMENT REQUEST</div>
-        <p className="client-greeting">Hello {request.client_name},</p>
         <h1>You have a payment request.</h1>
-        <p className="client-intro">{request.provider_name} has shared the details of completed work with you.</p>
+        <p className="client-intro">Review the payment request details below before continuing.</p>
         <div className="request-amount">
           <span>AMOUNT REQUESTED</span>
           <strong>{money(Number(request.amount), request.currency)}</strong>
           <small>{request.currency} · NEAR testnet</small>
         </div>
         <div className="request-details">
-          <div><span>Service / job</span><strong>{request.job_title}</strong></div>
           <div><span>Request reference</span><strong>{request.request_reference}</strong></div>
-          <div><span>Work summary</span><strong>{request.work_summary}</strong></div>
           <div><span>Receiving account</span><strong style={{ overflowWrap: "anywhere" }}>{request.recipient_account_id}</strong></div>
           <div><span>Network</span><strong>NEAR Testnet</strong></div>
         </div>
