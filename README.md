@@ -72,20 +72,22 @@ Do not use the current build to collect real funds.
 - `@supabase/ssr` and `@supabase/supabase-js`
 - Tailwind CSS and Lucide icons
 
-## Planned NEAR hackathon flow
+## NEAR hackathon flow
 
-1. Provider records a client job in USDC or NEAR.
-2. Provider marks the work complete.
-3. Taskora prepares a secure crypto payment request.
-4. Client reviews the request through an expiring share link.
-5. Client connects a NEAR-compatible wallet and approves the exact NEAR testnet transfer.
-6. A server-side verifier confirms final on-chain execution, signer, recipient and exact amount before the request is marked paid.
+1. Provider records an externally obtained client job.
+2. Provider tracks milestones, checklist items and work updates.
+3. Provider explicitly confirms completion.
+4. Taskora prepares a secure NEAR testnet payment request.
+5. Client reviews a minimal public checkout page through an expiring share link.
+6. The server-side verifier is designed to confirm final execution, signer, recipient and exact amount before marking a request paid.
+
+The verifier has mock regression and live negative-path coverage, but a successful end-to-end payment has not been demonstrated. Do not submit a wallet transaction or use real funds for the current review.
 
 See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
 
 ## Hackathon demo checklist
 
-Use [HACKATHON.md](./HACKATHON.md) for the full implementation status and judge walkthrough. The demo should show one complete job lifecycle: create job → add milestone/checklist → record progress and evidence → confirm completion → create secure request → client opens request → NEAR testnet wallet transfer → server verifies finality → request displays paid. Also demonstrate that a duplicate request and a mismatched/reused transaction are rejected.
+Use [HACKATHON.md](./HACKATHON.md) for the full implementation status and judge walkthrough. Demonstrate the job lifecycle, milestones/checklist, progress evidence, explicit completion, secure request creation, minimal client checkout, link revocation and verifier regression/negative-path tests. Do not stage a successful payment claim until the full flow has been safely validated.
 
 **Demo status:** the NEAR wallet and verifier code is present, but do not claim a successful live payment until the complete flow has been tested against the deployed testnet backend.
 
