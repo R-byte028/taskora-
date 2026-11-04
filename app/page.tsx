@@ -235,43 +235,28 @@ export default function Dashboard() {
     const amount = Number(editedAmount);
     if (!job || job.status !== "completed" || !Number.isFinite(amount) || amount <= 0 || saving) return;
 
-    const relatedRequests = paymentRequests.filter((request) => request.job_id === job.id);
-    if (relatedRequests.some((request) => request.status !== "draft")) {
-      notify("This amount is locked because a payment request has already been shared or paid.");
-      setAmountEditJob(null);
-      return;
-    }
-
     setSaving(true);
-    const { data: updatedJob, error: jobError } = await supabase
-      .from("jobs")
-      .update({ amount })
-      .eq("id", job.id)
-      .eq("status", "completed")
-      .select("id")
-      .maybeSingle();
+    const { error } = await supabase.rpc("update_completed_job_amount", {
+      p_job_id: job.id,
+      p_amount: amount,
+    });
+    setSaving(false);
 
-    if (jobError || !updatedJob) {
-      setSaving(false);
-      notify(jobError?.message ?? "This job could not be edited. Refresh and try again.");
-      return;
-    }
-
-    const { error: requestError } = await supabase
-      .from("payment_requests")
-      .update({ amount })
-      .eq("job_id", job.id)
-      .eq("status", "draft");
-
-    if (requestError) {
-      await supabase.from("jobs").update({ amount: Number(job.amount) }).eq("id", job.id).eq("status", "completed");
-      setSaving(false);
-      notify("The invoice drafts could not be updated, so the job amount was restored. Please try again.");
+    if (error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("amount is locked")) {
+        notify("This amount is locked because a payment request has already been shared or paid.");
+        setAmountEditJob(null);
+      } else if (message.includes("completed job not found")) {
+        notify("This job is no longer available to edit. Refreshing its latest status.");
+        setAmountEditJob(null);
+      } else {
+        notify("Couldn't update the job amount. " + error.message);
+      }
       await loadJobs();
       return;
     }
 
-    setSaving(false);
     setAmountEditJob(null);
     setEditedAmount("");
     notify("Completed job amount and draft invoices updated.");
