@@ -540,6 +540,10 @@ export type Database = {
           work_summary: string
         }[]
       }
+      update_completed_job_amount: {
+        Args: { p_job_id: string; p_amount: number }
+        Returns: undefined
+      }
       revoke_payment_request_share: {
         Args: { p_request_id: string }
         Returns: boolean
