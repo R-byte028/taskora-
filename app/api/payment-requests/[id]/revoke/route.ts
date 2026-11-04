@@ -29,5 +29,13 @@ export async function POST(_request: Request, context: RouteContext) {
     );
   }
 
+  const { error: clearError } = await supabase.from("payment_requests")
+    .update({ owner_share_token: null })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (clearError) {
+    return NextResponse.json({ error: "The link was revoked, but its saved copy could not be cleared. Refresh and try again." }, { status: 500 });
+  }
+
   return NextResponse.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
 }
