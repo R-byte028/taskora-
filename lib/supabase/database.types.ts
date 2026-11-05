@@ -404,7 +404,6 @@ export type Database = {
           amount: number
           amount_atomic?: number | null
           owner_share_token?: string | null
-          owner_share_token?: string | null
           client_id: string
           created_at?: string
           currency?: string
@@ -421,6 +420,7 @@ export type Database = {
         Update: {
           amount?: number
           amount_atomic?: number | null
+          owner_share_token?: string | null
           client_id?: string
           created_at?: string
           currency?: string
