@@ -16,7 +16,7 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 - NEAR testnet wallet connection and client checkout UI.
 - Server-side NEAR testnet transaction verification and atomic payment finalization.
 - Payment-request status and settlement fields protected from direct authenticated client writes.
-- Atomic share-token creation and revocation inside owner-checked database functions.
+- Atomic share-token creation and revocation inside owner-checked database functions. Raw owner tokens cannot be selected directly; an owner-only recovery RPC returns only active, unexpired links.
 - Persistent Assistant conversation history in private Supabase tables.
 
 ## Assistant status
@@ -74,7 +74,7 @@ Taskora is a testnet build, not a live payment product.
 - Latest GitHub Actions run passed TypeScript checking and the Next.js production build.
 - NEAR verifier mock regression suite: 18 tests passed.
 - Deployed Edge Function negative-path suite: 7 tests passed using synthetic invalid data.
-- Supabase has 20 applied migrations.
+- Supabase has 21 applied migrations.
 - Authenticated RLS isolation check using a synthetic second-user identity returned zero rows across the user-owned data tables.
 - Payment-request privilege checks confirm authenticated clients cannot directly update payment status or settlement fields.
 - Share and revoke database regression checks passed inside rolled-back transactions.
