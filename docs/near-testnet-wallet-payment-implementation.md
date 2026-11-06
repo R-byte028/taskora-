@@ -55,6 +55,7 @@ Only the trusted server-side verifier can create the payment event and change a 
 - Public checkout RPCs validate the high-entropy share token and return only the minimum checkout fields. Personal names, job titles and private work summaries are omitted.
 - Payment request creation is limited to draft rows. Authenticated clients cannot directly update payment status, settlement fields, amounts or owner tokens.
 - Share-token creation and revocation update the share record and owner recovery token atomically inside owner-checked database functions.
+- Raw owner tokens are excluded from direct table reads. An owner-only recovery RPC returns a token only when its hash matches an active, unexpired share; expired and revoked links cannot be recopied as if active.
 - Completed-job amount editing uses an ownership-checked, locking database function and is rejected once a payment request has been shared or paid.
 - All public tables have RLS enabled. Payment event/share tables have no client-facing policies, so direct access is default-deny.
 - Work evidence is stored in a private bucket with owner/job-scoped storage policies, a 10 MB limit and an allow-list of image, PDF and plain-text types.
