@@ -82,7 +82,5 @@ Only the trusted server-side verifier can create the payment event and change a 
 
 ## Final release checks
 
-- Browser-test the latest preview for draft creation, link sharing, recopy without re-sharing, revocation and invalid/expired-link handling.
-- Browser-test milestone/checklist persistence and progress evidence upload/download.
 - Complete the judge walkthrough, screenshots and demo recording.
 - Keep all payment demonstrations on NEAR testnet.
