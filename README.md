@@ -80,7 +80,7 @@ Taskora is a testnet build, not a live payment product.
 - Share and revoke database regression checks passed inside rolled-back transactions.
 - Database security review confirmed RLS on all public tables, private evidence storage and restricted payment-finalization functions.
 
-Sign-up, email confirmation and sign-in have been tested. The latest backend changes still need a final browser walkthrough for link recopy/revocation and milestone/evidence workflows.
+Sign-up, email confirmation and sign-in have been tested. Owner browser testing has confirmed the payment-link lifecycle (share, recopy, revoke and blocked revoked URL) and reports the workspace tools are working correctly. The remaining release task is the judge walkthrough, screenshots and demo recording.
 
 ## NEAR hackathon walkthrough
 
@@ -88,10 +88,10 @@ Sign-up, email confirmation and sign-in have been tested. The latest backend cha
 2. Create a client job and track milestones, checklist items and progress updates.
 3. Confirm completion and prepare a secure NEAR testnet payment request.
 4. Open the client checkout page and review the amount, recipient and testnet disclosure.
-5. Connect a NEAR testnet wallet and complete a small testnet transfer.
-6. Show the checkout's independent “Payment verified” confirmation and matching payment record.
+5. Show the already completed NEAR testnet checkout and its recorded transaction.
+6. Show the checkout's independent “Payment verified” confirmation and matching payment record; do not send another payment just for the demo.
 7. Demonstrate verifier rejection rules with the documented regression and negative-path suites.
-8. Demonstrate link recopy without creating a new link, then revoke a separate link and confirm the old link no longer works.
+8. Demonstrate link recopy without creating a new link, then revoke a separate link and confirm the old link no longer works (owner browser-tested).
 9. See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment implementation record](./docs/near-testnet-wallet-payment-implementation.md).
 
 ## Verifier tests
