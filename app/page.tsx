@@ -452,19 +452,6 @@ export default function Dashboard() {
       return;
     }
 
-    if (lower.includes("completed")) {
-      setJobFilter("completed");
-      setNav("My Jobs");
-      setMobileNavOpen(false);
-    } else if (lower.includes("pending") || lower.includes("unpaid") || lower.includes("shared")) {
-      setNav("My Payments");
-      setMobileNavOpen(false);
-    } else if (lower.includes("active") || lower.includes("in progress")) {
-      setJobFilter("in_progress");
-      setNav("My Jobs");
-      setMobileNavOpen(false);
-    }
-
     try {
       const response = await fetch("/api/assistant/chat", {
         method: "POST",
