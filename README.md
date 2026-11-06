@@ -9,21 +9,21 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 - Email/password sign-up, sign-in and email confirmation through Supabase Auth.
 - Persistent client, job, milestone, checklist, work-update and payment-request records.
 - Responsive Overview, My Jobs, My Payments, Invoices, Assistant and Settings workspace.
-- Workspace search, actionable notifications, profile editing and password updates.
+- Workspace search, notifications, profile editing and password updates.
 - Explicit job-completion confirmation, separate from payment status.
-- Private work-evidence storage with owner-scoped access.
-- Secure client payment links, draft retry, link revocation and owner-only link recopy.
+- Private work-evidence storage with owner/job-scoped access.
+- Secure client payment links, draft retry, revocation and owner-only link recopy.
 - NEAR testnet wallet connection and client checkout UI.
 - Server-side NEAR testnet transaction verification and atomic payment finalization.
-- Persistent Assistant conversations stored in private Supabase tables.
-- AI Assistant connected to Vercel AI Gateway, with allow-listed read-only tools for workspace summaries, job lists and pending payment requests.
-- Assistant actions that could change records remain user-reviewed in the Taskora interface.
+- Payment-request status and settlement fields protected from direct authenticated client writes.
+- Atomic share-token creation and revocation inside owner-checked database functions.
+- Persistent Assistant conversation history in private Supabase tables.
 
-## Assistant safety and runtime
+## Assistant status
 
-The Assistant uses the Vercel AI Gateway model configured by `AI_GATEWAY_MODEL`; the current code fallback is `alibaba/qwen-3-32b`. Vercel deployments use the deployment OIDC token when available. Local or non-Vercel environments can provide `AI_GATEWAY_API_KEY` without committing it.
+The Assistant page and conversation-history backend are present. Vercel AI Gateway authentication is not configured, so AI responses are deliberately deferred. This does not block the core job, milestone, invoice or payment workflows. Do not configure AI Gateway as part of the current release work.
 
-The Assistant tools are read-only. They cannot create or edit jobs, create or revoke payment links, transfer assets, or mark requests paid. Shared requests are never described as confirmed payments. USDC and NEAR values are kept separate.
+The Assistant is designed to be read-only: it must not create or edit jobs, create or revoke payment links, transfer assets, or mark requests paid.
 
 ## Run locally
 
@@ -36,15 +36,14 @@ Requirements: Node.js 20.9 or later.
    npm install
    ```
 
-3. Copy `.env.example` to `.env.local`. It contains the Taskora Supabase URL and publishable key plus the optional AI Gateway model setting.
-4. For local AI requests, configure an AI Gateway API key in your uncommitted `.env.local`. Never paste it into source code or commit it.
-5. Start the app:
+3. Copy `.env.example` to `.env.local`.
+4. Start the app:
 
    ```bash
    npm run dev
    ```
 
-6. Open http://localhost:3000 and sign in.
+5. Open http://localhost:3000 and sign in.
 
 The Supabase publishable key is designed for use in a public client application. Never expose a Supabase secret or service-role key in a `NEXT_PUBLIC_*` variable or commit one to Git.
 
@@ -52,11 +51,13 @@ The Supabase publishable key is designed for use in a public client application.
 
 Taskora uses the dedicated Supabase project `basqoozudxgomnccrnub`. Its database includes profiles, clients, jobs, milestones, checklist items, work updates, payment requests, payment events and Assistant conversation history.
 
-All public tables have Row Level Security enabled. User-owned records are scoped to the authenticated owner. The work-evidence bucket is private and has owner/job-scoped storage policies.
+All 12 public tables have Row Level Security enabled. User-owned records are scoped to the authenticated owner. The work-evidence bucket is private and has owner/job-scoped storage policies.
+
+Authenticated users can create draft payment requests and delete eligible drafts, but cannot directly set payment status, settlement details or amounts. The verified server-side settlement function is the only path that marks a request paid.
 
 ## Payment status and limitations
 
-Taskora is still a testnet build, not a live payment product.
+Taskora is a testnet build, not a live payment product.
 
 - NEAR checkout is testnet-only. Mainnet and USDC settlement are not enabled.
 - The deployed `verify-near-payment` Edge Function is active at version 6.
@@ -64,20 +65,22 @@ Taskora is still a testnet build, not a live payment product.
 - Duplicate transaction use is rejected.
 - Public checkout responses omit personal names, job titles and private work summaries.
 - Shared links are payment requests, not proof that funds have been received.
-- **End-to-end testnet checkout has now been completed:** the user completed the wallet transaction and the checkout displayed “Payment verified” with independent NEAR testnet verification.
+- **End-to-end testnet checkout has been completed.** The previously confirmed transaction is recorded in Supabase as paid with FINAL execution; the stored event matches the request's exact atomic amount and recipient.
 - This validates the testnet verification path; it does not enable mainnet or real-fund collection.
 - Do not use real funds or describe this build as ready for real payment collection.
 
 ## Verification recorded
 
-- GitHub Actions: TypeScript check and Next.js production build passed for the current feature-branch commit.
+- Latest GitHub Actions run passed TypeScript checking and the Next.js production build.
 - NEAR verifier mock regression suite: 18 tests passed.
 - Deployed Edge Function negative-path suite: 7 tests passed using synthetic invalid data.
-- User-confirmed browser checkout displayed successful independent NEAR testnet verification.
-- Supabase migrations for the Assistant, milestones, work updates, secure payment links and NEAR settlement are applied.
-- Database security review confirmed RLS on all public tables, private evidence storage and restricted execution of privileged payment-finalization functions.
+- Supabase has 20 applied migrations.
+- Authenticated RLS isolation check using a synthetic second-user identity returned zero rows across the user-owned data tables.
+- Payment-request privilege checks confirm authenticated clients cannot directly update payment status or settlement fields.
+- Share and revoke database regression checks passed inside rolled-back transactions.
+- Database security review confirmed RLS on all public tables, private evidence storage and restricted payment-finalization functions.
 
-Authenticated sign-up, email confirmation and full Assistant chat runtime still need a separate browser walkthrough.
+Sign-up, email confirmation and sign-in have been tested. The latest backend changes still need a final browser walkthrough for link recopy/revocation and milestone/evidence workflows.
 
 ## NEAR hackathon walkthrough
 
@@ -85,11 +88,11 @@ Authenticated sign-up, email confirmation and full Assistant chat runtime still 
 2. Create a client job and track milestones, checklist items and progress updates.
 3. Confirm completion and prepare a secure NEAR testnet payment request.
 4. Open the client checkout page and review the amount, recipient and testnet disclosure.
-5. Connect a NEAR testnet wallet and complete the requested testnet transfer.
-6. Show the checkout's independent “Payment verified” confirmation.
-7. Demonstrate the verifier's rejection rules with the documented regression and negative-path suites.
-8. Demonstrate the Assistant's read-only workspace summaries and job/payment lookups.
-9. Revoke a separate share link and confirm the old link is no longer usable. See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
+5. Connect a NEAR testnet wallet and complete a small testnet transfer.
+6. Show the checkout's independent “Payment verified” confirmation and matching payment record.
+7. Demonstrate verifier rejection rules with the documented regression and negative-path suites.
+8. Demonstrate link recopy without creating a new link, then revoke a separate link and confirm the old link no longer works.
+9. See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment implementation record](./docs/near-testnet-wallet-payment-implementation.md).
 
 ## Verifier tests
 
