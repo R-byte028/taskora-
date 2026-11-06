@@ -71,7 +71,7 @@ Taskora is a testnet build, not a live payment product.
 
 ## Verification recorded
 
-- Latest GitHub Actions run passed TypeScript checking and the Next.js production build.
+- GitHub Actions run #149 passed for PR head 8f51c0a: verifier regression tests, TypeScript checking and the Next.js production build.
 - NEAR verifier mock regression suite: 18 tests passed.
 - Deployed Edge Function negative-path suite: 7 tests passed using synthetic invalid data.
 - Supabase has 21 applied migrations.
@@ -80,11 +80,11 @@ Taskora is a testnet build, not a live payment product.
 - Share and revoke database regression checks passed inside rolled-back transactions.
 - Database security review confirmed RLS on all public tables, private evidence storage and restricted payment-finalization functions.
 
-Sign-up, email confirmation and sign-in have been tested. Owner browser testing has confirmed the payment-link lifecycle (share, recopy, revoke and blocked revoked URL) and reports the workspace tools are working correctly. The remaining release task is the judge walkthrough, screenshots and demo recording.
+Sign-up, email confirmation and sign-in have been tested. Owner browser testing has confirmed the payment-link lifecycle (share, recopy, revoke and blocked revoked URL) and reports the workspace tools are working correctly. The remaining release task is the judge walkthrough, screenshots and demo recording. The timed speaking script, screenshot list and recording safety checklist are in [docs/judge-demo.md](./docs/judge-demo.md).
 
 ## NEAR hackathon walkthrough
 
-The concise [judge demo guide](./docs/judge-demo.md) includes the timed walkthrough, screenshot checklist and recording safety notes.
+The [judge demo pack](./docs/judge-demo.md) includes a four-minute speaking script, screenshot capture list, recording checklist and verified technical facts. The current PR-head preview should be confirmed READY before recording.
 
 1. Sign in to the Taskora workspace.
 2. Create a client job and track milestones, checklist items and progress updates.
