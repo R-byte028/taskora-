@@ -17,7 +17,7 @@ type PaymentRequestRow = Tables<"payment_requests">;
 type PaymentRequestView = Omit<PaymentRequestRow, "owner_share_token"> & { client_name: string; job_title: string };
 type JobStatus = "in_progress" | "completed" | "cancelled";
 type JobView = JobRow & { client_name: string };
-type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices" | "Assistant" | "Settings";
+type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices" | "Notifications" | "Assistant" | "Settings";
 type Asset = "USDC" | "NEAR";
 
 const isCryptoAsset = (currency: string): currency is Asset => currency === "USDC" || currency === "NEAR";
@@ -516,6 +516,7 @@ export default function Dashboard() {
     { name: "My Jobs" as PageName, icon: BriefcaseBusiness },
     { name: "My Payments" as PageName, icon: Wallet },
     { name: "Invoices" as PageName, icon: FileText },
+    { name: "Notifications" as PageName, icon: Bell },
     { name: "Assistant" as PageName, icon: Bot },
     { name: "Settings" as PageName, icon: Settings },
   ];
@@ -523,6 +524,8 @@ export default function Dashboard() {
   const changePage = (page: PageName) => {
     setNav(page);
     setMobileNavOpen(false);
+    setNotificationsOpen(false);
+    setSearchOpen(false);
   };
 
   const jobRows = (items: JobView[]) => items.length === 0
@@ -588,7 +591,8 @@ export default function Dashboard() {
       </section>}
       {notificationsOpen && <section className="utility-popover notifications-popover" role="dialog" aria-label="Workspace notifications">
         <div className="utility-popover-head"><div><b>Notifications</b><small>{notificationItems.length} items need your attention</small></div><button className="utility-close" onClick={() => setNotificationsOpen(false)} aria-label="Close notifications"><X size={15}/></button></div>
-        {notificationItems.length === 0 ? <p className="utility-hint">You're all caught up. New drafts and completed jobs will appear here.</p> : notificationItems.map((item,index) => <button className="utility-result" key={item.title+"-"+index} onClick={() => { changePage(item.page); setNotificationsOpen(false); }}><span><b>{item.title}</b><small>{item.detail}</small></span><ArrowUpRight size={14}/></button>)}
+        {notificationItems.length === 0 ? <p className="utility-hint">You're all caught up. New drafts and completed jobs will appear here.</p> : notificationItems.map((item,index) => <button className="utility-result" key={item.title+"-"+index} onClick={() => changePage("Notifications")}><span><b>{item.title}</b><small>{item.detail}</small></span><ArrowUpRight size={14}/></button>)}
+        <button className="notification-view-all" onClick={() => changePage("Notifications")}>View all notifications <ArrowUpRight size={13}/></button>
       </section>}
 
       {nav === "Overview" && <>
@@ -611,6 +615,15 @@ export default function Dashboard() {
             <section className="panel activity"><div className="panel-head"><div><h2 className="panel-title">Payment workflow</h2><p className="panel-sub">Current product capabilities</p></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Record client work</b><span>Jobs and client details are saved privately.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Prepare a crypto request</b><span>Use USDC or NEAR as the requested asset.</span></div></div><div className="activity-row"><Clock3 size={16}/><div><b>NEAR testnet settlement</b><span>Eligible requests are marked paid only after server-side transaction verification.</span></div></div></section>
           </div>
         </div>
+      </>}
+
+      {nav === "Notifications" && <>
+        <section className="welcome"><div><p className="eyebrow">WORKSPACE UPDATES</p><h1>Notifications</h1><p className="sub">Updates about your jobs and crypto payment requests. Select an item to open the relevant workspace section.</p></div><span className="pill">{notificationItems.length} updates</span></section>
+        <section className="panel notification-center"><div className="panel-head"><div><h2 className="panel-title">Your notifications</h2><p className="panel-sub">Choose an update to continue where it matters.</p></div></div>
+          {notificationItems.length === 0 ? <div className="empty-state"><Bell size={25}/><b>You're all caught up</b><span>New drafts, shared payment requests and completed jobs needing a request will appear here.</span></div> : notificationItems.map((item,index) => <article className="notification-center-item" key={item.title+"-"+index}><div className="notification-center-icon"><Bell size={15}/></div><div className="notification-center-copy"><b>{item.title}</b><span>{item.detail}</span><small>Workspace update</small></div><button className="mini-action" onClick={() => changePage(item.page)}>Open <ArrowUpRight size={12}/></button></article>)}
+        </section>
+      </>}
+        <button className="overview-assistant-fab" onClick={() => changePage("Assistant")} aria-label="Open Taskora Assistant" title="Open Taskora Assistant"><span className="overview-assistant-fab-icon"><Sparkles size={18}/></span><span><b>Taskora Assistant</b><small>Explore AI assistance</small></span><ArrowUpRight size={14}/></button>
       </>}
 
       {nav === "My Jobs" && <>
