@@ -42,7 +42,7 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 - [x] NEAR verifier mock regression suite: 18 tests passed.
 - [x] Live Edge Function negative-path smoke suite: 7 tests passed using synthetic invalid data only.
 - [x] GitHub Actions run #149 passed for PR head 8f51c0a (verifier regression suite, TypeScript check and Next.js production build).
-- [ ] Vercel preview for the current PR head 8f51c0a is still building; verify it reaches READY before recording. The preceding commit 08ca29b has a READY preview.
+- [x] The application-code commit 8f51c0a has a READY Vercel preview (deployment dpl_9D92zb1PiZgkHHNCGwp3W6acqGMh). Later commits in this judge-pack pass are documentation-only; verify the newest branch preview is READY before recording.
 - [x] Supabase has 21 applied migrations.
 - [x] Database security review confirmed RLS on all public tables and private work-evidence storage.
 - [x] Authenticated RLS isolation check with a synthetic second-user identity returned zero rows across user-owned data tables.
