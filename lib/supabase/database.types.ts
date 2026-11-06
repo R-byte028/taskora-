@@ -502,6 +502,13 @@ export type Database = {
         }
         Returns: string
       }
+      get_active_payment_request_share: {
+        Args: { p_request_id: string }
+        Returns: {
+          expires_at: string
+          share_token: string
+        }[]
+      }
       get_near_payment_verification_context: {
         Args: { p_token: string }
         Returns: {
