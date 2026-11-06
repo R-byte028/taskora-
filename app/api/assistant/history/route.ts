@@ -3,11 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
+const noStoreHeaders = { "Cache-Control": "no-store" };
+
 export async function GET() {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
-    return NextResponse.json({ error: "Sign in to load your Assistant history." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Sign in to load your Assistant history." },
+      { status: 401, headers: noStoreHeaders },
+    );
   }
 
   const db = supabase as any;
@@ -20,12 +25,16 @@ export async function GET() {
     .maybeSingle();
 
   if (conversationError) {
-    return NextResponse.json({ error: "Couldn't load Assistant history." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Couldn't load Assistant history." },
+      { status: 500, headers: noStoreHeaders },
+    );
   }
   if (!conversation) {
-    return NextResponse.json({ conversationId: null, messages: [] }, {
-      headers: { "Cache-Control": "no-store" },
-    });
+    return NextResponse.json(
+      { conversationId: null, messages: [] },
+      { headers: noStoreHeaders },
+    );
   }
 
   const { data: rows, error: messagesError } = await db
@@ -37,11 +46,14 @@ export async function GET() {
     .limit(40);
 
   if (messagesError) {
-    return NextResponse.json({ error: "Couldn't load Assistant messages." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Couldn't load Assistant messages." },
+      { status: 500, headers: noStoreHeaders },
+    );
   }
 
   return NextResponse.json({
     conversationId: conversation.id,
     messages: (rows ?? []).reverse(),
-  }, { headers: { "Cache-Control": "no-store" } });
+  }, { headers: noStoreHeaders });
 }

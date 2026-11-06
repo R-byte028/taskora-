@@ -11,8 +11,19 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
-      return NextResponse.redirect(new URL(safeNext, origin));
+      let destination = new URL("/", origin);
+
+      // Resolve the requested path, then explicitly reject any cross-origin target.
+      if (next.startsWith("/") && !next.startsWith("//")) {
+        try {
+          const candidate = new URL(next, origin);
+          if (candidate.origin === origin) destination = candidate;
+        } catch {
+          // Keep the safe home-page fallback for malformed redirect values.
+        }
+      }
+
+      return NextResponse.redirect(destination);
     }
   }
 

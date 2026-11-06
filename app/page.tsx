@@ -7,15 +7,17 @@ import {
   LogOut, Menu, Plus, Search, Send, Settings, Sparkles, Wallet, X, Zap
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import JobMilestones from "@/components/job-milestones";
+import JobUpdates from "@/components/job-updates";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type JobRow = Tables<"jobs">;
 type ClientRow = Tables<"clients">;
 type PaymentRequestRow = Tables<"payment_requests">;
-type PaymentRequestView = PaymentRequestRow & { client_name: string; job_title: string };
+type PaymentRequestView = Omit<PaymentRequestRow, "owner_share_token"> & { client_name: string; job_title: string };
 type JobStatus = "in_progress" | "completed" | "cancelled";
 type JobView = JobRow & { client_name: string };
-type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices" | "Assistant" | "Settings";
+type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices" | "Notifications" | "Assistant" | "Settings";
 type Asset = "USDC" | "NEAR";
 
 const isCryptoAsset = (currency: string): currency is Asset => currency === "USDC" || currency === "NEAR";
@@ -38,6 +40,10 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
+  const [completionJob, setCompletionJob] = useState<JobView | null>(null);
+  const [completionAcknowledged, setCompletionAcknowledged] = useState(false);
+  const [amountEditJob, setAmountEditJob] = useState<JobView | null>(null);
+  const [editedAmount, setEditedAmount] = useState("");
   const [toast, setToast] = useState("");
   const [nav, setNav] = useState<PageName>("Overview");
   const [collapsed, setCollapsed] = useState(false);
@@ -74,7 +80,7 @@ export default function Dashboard() {
     const [{ data: jobRows, error: jobsError }, { data: clients, error: clientsError }, { data: requestRows, error: requestsError }, { data: profile }] = await Promise.all([
       supabase.from("jobs").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("*").order("created_at", { ascending: false }),
-      supabase.from("payment_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("payment_requests").select("id,user_id,job_id,client_id,amount,currency,work_summary,status,created_at,updated_at,settlement_network,settlement_asset,recipient_account_id,amount_atomic").order("created_at", { ascending: false }),
       supabase.from("profiles").select("full_name,business_name").eq("id", user.id).maybeSingle(),
     ]);
     setProfileFullName(profile?.full_name ?? "");
@@ -90,7 +96,7 @@ export default function Dashboard() {
       ...job,
       client_name: job.client_id ? clientMap.get(job.client_id) ?? "Client" : "No client",
     })));
-    setPaymentRequests((requestRows ?? []).map((request: PaymentRequestRow) => ({
+    setPaymentRequests((requestRows ?? []).map((request: Omit<PaymentRequestRow, "owner_share_token">) => ({
       ...request,
       client_name: clientMap.get(request.client_id) ?? "Client",
       job_title: jobMap.get(request.job_id)?.title ?? "Job",
@@ -191,17 +197,69 @@ export default function Dashboard() {
     await loadJobs();
   }
 
-  async function markComplete(job: JobView) {
+  function markComplete(job: JobView) {
+    if (job.status !== "in_progress") return;
     if (!isCryptoAsset(job.currency)) {
       notify("This is an older fiat record. Create a new job with a crypto amount.");
       return;
     }
-    const { error } = await supabase.from("jobs").update({
+    setCompletionAcknowledged(false);
+    setCompletionJob(job);
+  }
+
+  async function confirmJobCompletion() {
+    const job = completionJob;
+    if (!job || !completionAcknowledged || saving) return;
+    setSaving(true);
+    const { data, error } = await supabase.from("jobs").update({
       status: "completed" satisfies JobStatus,
       completed_at: new Date().toISOString(),
-    }).eq("id", job.id);
-    if (error) { notify(error.message); return; }
-    notify("Job marked as completed.");
+    }).eq("id", job.id).eq("status", "in_progress").select("id").maybeSingle();
+    setSaving(false);
+    if (error) { notify("Couldn't complete this job: " + error.message); return; }
+    if (!data) {
+      setCompletionJob(null);
+      notify("This job has already changed. Refreshing its latest status.");
+      await loadJobs();
+      return;
+    }
+    setCompletionJob(null);
+    setCompletionAcknowledged(false);
+    notify("Job completed. You can now prepare its crypto payment request.");
+    await loadJobs();
+  }
+
+  async function saveCompletedJobAmount(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const job = amountEditJob;
+    const amount = Number(editedAmount);
+    if (!job || job.status !== "completed" || !Number.isFinite(amount) || amount <= 0 || saving) return;
+
+    setSaving(true);
+    const { error } = await supabase.rpc("update_completed_job_amount", {
+      p_job_id: job.id,
+      p_amount: amount,
+    });
+    setSaving(false);
+
+    if (error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("amount is locked")) {
+        notify("This amount is locked because a payment request has already been shared or paid.");
+        setAmountEditJob(null);
+      } else if (message.includes("completed job not found")) {
+        notify("This job is no longer available to edit. Refreshing its latest status.");
+        setAmountEditJob(null);
+      } else {
+        notify("Couldn't update the job amount. " + error.message);
+      }
+      await loadJobs();
+      return;
+    }
+
+    setAmountEditJob(null);
+    setEditedAmount("");
+    notify("Completed job amount and draft invoices updated.");
     await loadJobs();
   }
 
@@ -217,8 +275,17 @@ export default function Dashboard() {
     await loadJobs();
   }
   async function openRequestFor(job: JobView) {
-    if (!isCryptoAsset(job.currency)) {
-      notify("This older record uses a fiat denomination. Create a new crypto-denominated job first.");
+    if (job.status !== "completed") {
+      notify("Only completed jobs can have a payment request.");
+      return;
+    }
+    if (job.currency !== "NEAR") {
+      notify("Client checkout currently supports NEAR testnet only. Create a NEAR-denominated job first.");
+      return;
+    }
+    if (paymentRequests.some((request) => request.job_id === job.id)) {
+      notify("A payment request already exists for this job. Manage or reshare it from Invoices.");
+      setNav("Invoices");
       return;
     }
     setSelected(job.id);
@@ -228,17 +295,32 @@ export default function Dashboard() {
   async function savePaymentRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const job = jobs.find((item) => item.id === selected);
-    if (!job || !job.client_id || !isCryptoAsset(job.currency)) {
-      notify("Choose a completed job with a supported crypto asset.");
+    if (!job || job.status !== "completed" || !job.client_id || job.currency !== "NEAR") {
+      notify("Choose a completed NEAR-denominated job. Client checkout currently supports NEAR testnet only.");
       return;
     }
     setSaving(true);
+    const { data: existingRequest, error: existingRequestError } = await supabase
+      .from("payment_requests").select("id").eq("job_id", job.id).limit(1).maybeSingle();
+    if (existingRequestError) {
+      setSaving(false);
+      notify("Couldn't verify whether a payment request already exists. Please try again.");
+      return;
+    }
+    if (existingRequest) {
+      setSaving(false);
+      setRequestOpen(false);
+      notify("A payment request already exists for this job. Manage or reshare it from Invoices.");
+      setNav("Invoices");
+      await loadJobs();
+      return;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.replace("/login"); return; }
     const summary = requestNote.trim() || job.description || "Work completed as agreed.";
     const { data: paymentRequest, error } = await supabase.from("payment_requests").insert({
       user_id: user.id, job_id: job.id, client_id: job.client_id,
-      amount: Number(job.amount), currency: job.currency, work_summary: summary, status: "draft",
+      amount: Number(job.amount), currency: job.currency, work_summary: summary,
     }).select("id").single();
     if (error || !paymentRequest) {
       setSaving(false);
@@ -283,6 +365,27 @@ export default function Dashboard() {
     await loadJobs();
   }
 
+  async function copyExistingShare(requestId: string) {
+    setSaving(true);
+    try {
+      const response = await fetch("/api/payment-requests/" + requestId + "/share", { method: "GET", cache: "no-store" });
+      const result = await response.json() as { shareUrl?: string; error?: string };
+      if (!response.ok || !result.shareUrl) {
+        notify(result.error ?? "Couldn't retrieve the existing client link.");
+        return;
+      }
+      setShareUrl(result.shareUrl);
+      try {
+        await navigator.clipboard.writeText(result.shareUrl);
+        notify("Existing client link copied. It has not been replaced.");
+      } catch {
+        notify("Existing link retrieved. Use Copy link in the confirmation.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function revokeShare(requestId: string) {
     if (!window.confirm("Revoke this client link? The existing link will stop working, but the request will remain saved.")) return;
     const response = await fetch("/api/payment-requests/" + requestId + "/revoke", { method: "POST" });
@@ -290,6 +393,31 @@ export default function Dashboard() {
     if (!response.ok) { notify(result.error ?? "Could not revoke this link."); return; }
     setShareUrl("");
     notify("Client link revoked. The request is now a draft.");
+    await loadJobs();
+  }
+
+  async function deleteDraftRequest(requestId: string) {
+    if (saving) return;
+    if (!window.confirm("Permanently delete this draft payment request? This cannot be undone. Only drafts that have not been shared or paid can be deleted.")) return;
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("payment_requests")
+      .delete()
+      .eq("id", requestId)
+      .eq("status", "draft")
+      .select("id")
+      .maybeSingle();
+    setSaving(false);
+    if (error) {
+      notify("Couldn't delete this draft. It may have payment history or may no longer be a draft.");
+      return;
+    }
+    if (!data) {
+      notify("This request is no longer a draft. Refreshing its latest status.");
+      await loadJobs();
+      return;
+    }
+    notify("Draft payment request deleted.");
     await loadJobs();
   }
 
@@ -322,19 +450,6 @@ export default function Dashboard() {
         setAssistantMessages((items) => [...items, { role: "assistant", content: reply }]);
       }
       return;
-    }
-
-    if (lower.includes("completed")) {
-      setJobFilter("completed");
-      setNav("My Jobs");
-      setMobileNavOpen(false);
-    } else if (lower.includes("pending") || lower.includes("unpaid") || lower.includes("shared")) {
-      setNav("My Payments");
-      setMobileNavOpen(false);
-    } else if (lower.includes("active") || lower.includes("in progress")) {
-      setJobFilter("in_progress");
-      setNav("My Jobs");
-      setMobileNavOpen(false);
     }
 
     try {
@@ -401,6 +516,7 @@ export default function Dashboard() {
     { name: "My Jobs" as PageName, icon: BriefcaseBusiness },
     { name: "My Payments" as PageName, icon: Wallet },
     { name: "Invoices" as PageName, icon: FileText },
+    { name: "Notifications" as PageName, icon: Bell },
     { name: "Assistant" as PageName, icon: Bot },
     { name: "Settings" as PageName, icon: Settings },
   ];
@@ -408,6 +524,8 @@ export default function Dashboard() {
   const changePage = (page: PageName) => {
     setNav(page);
     setMobileNavOpen(false);
+    setNotificationsOpen(false);
+    setSearchOpen(false);
   };
 
   const jobRows = (items: JobView[]) => items.length === 0
@@ -418,8 +536,11 @@ export default function Dashboard() {
         <div className="job-actions">
           <span className={"status " + (job.status === "completed" ? "complete" : job.status === "cancelled" ? "pending" : "progress")}>{job.status.replace("_", " ")}</span>
           {job.status === "in_progress" && <><button className="mini-action" onClick={() => void markComplete(job)}>Mark complete</button><button className="mini-action danger-action" onClick={() => void cancelJob(job)}>Cancel job</button></>}
-          {job.status === "completed" && isCryptoAsset(job.currency) && <button className="mini-action" onClick={() => void openRequestFor(job)}>Request payment</button>}
+          {job.status === "completed" && job.currency === "NEAR" && <><button className="mini-action" onClick={() => { setAmountEditJob(job); setEditedAmount(String(job.amount)); }}>Edit amount</button><button className="mini-action" onClick={() => void openRequestFor(job)}>Request payment</button></>}
+          {job.status === "completed" && job.currency === "USDC" && <span className="subtle-note">NEAR testnet checkout only</span>}
         </div>
+        <JobMilestones jobId={job.id}/>
+        <JobUpdates jobId={job.id}/>
       </div>);
 
   const requestRows = (items: PaymentRequestView[], invoiceMode = false) => items.length === 0
@@ -428,8 +549,11 @@ export default function Dashboard() {
         <div className="request-info"><b>{request.job_title}</b><span>{request.client_name} · {cryptoAmount(Number(request.amount), request.currency)}</span><small>{invoiceMode ? "Created " + dateLabel(request.created_at) : "Request created " + dateLabel(request.created_at)}</small></div>
         <div className="request-controls">
           <span className={"status " + (request.status === "shared" ? "complete" : request.status === "paid" ? "paid" : "pending")}>{request.status}</span>
-          {request.status === "draft" && isCryptoAsset(request.currency) && <button className="mini-action" disabled={saving} onClick={() => void shareDraft(request.id)}>Share link</button>}
-          {request.status === "shared" && <button className="mini-action danger-action" onClick={() => void revokeShare(request.id)}>Revoke link</button>}
+          {request.status === "draft" && request.currency === "NEAR" && <button className="mini-action" disabled={saving} onClick={() => void shareDraft(request.id)}>Share link</button>}
+          {request.status === "draft" && request.currency === "USDC" && <span className="subtle-note">USDC checkout is not enabled yet</span>}
+          {request.status === "draft" && <button className="mini-action danger-action" disabled={saving} onClick={() => void deleteDraftRequest(request.id)}>Delete draft</button>}
+          {request.status === "shared" && <button className="mini-action" disabled={saving} onClick={() => void copyExistingShare(request.id)}><Copy size={12}/> Copy link</button>}
+          {request.status === "shared" && <button className="mini-action danger-action" disabled={saving} onClick={() => void revokeShare(request.id)}>Revoke link</button>}
           {request.status === "shared" && <span className="subtle-note">Awaiting verified on-chain payment</span>}
           {!isCryptoAsset(request.currency) && <span className="subtle-note">Recreate this legacy request in crypto</span>}
         </div>
@@ -467,7 +591,8 @@ export default function Dashboard() {
       </section>}
       {notificationsOpen && <section className="utility-popover notifications-popover" role="dialog" aria-label="Workspace notifications">
         <div className="utility-popover-head"><div><b>Notifications</b><small>{notificationItems.length} items need your attention</small></div><button className="utility-close" onClick={() => setNotificationsOpen(false)} aria-label="Close notifications"><X size={15}/></button></div>
-        {notificationItems.length === 0 ? <p className="utility-hint">You're all caught up. New drafts and completed jobs will appear here.</p> : notificationItems.map((item,index) => <button className="utility-result" key={item.title+"-"+index} onClick={() => { changePage(item.page); setNotificationsOpen(false); }}><span><b>{item.title}</b><small>{item.detail}</small></span><ArrowUpRight size={14}/></button>)}
+        {notificationItems.length === 0 ? <p className="utility-hint">You're all caught up. New drafts and completed jobs will appear here.</p> : notificationItems.map((item,index) => <button className="utility-result" key={item.title+"-"+index} onClick={() => changePage("Notifications")}><span><b>{item.title}</b><small>{item.detail}</small></span><ArrowUpRight size={14}/></button>)}
+        <button className="notification-view-all" onClick={() => changePage("Notifications")}>View all notifications <ArrowUpRight size={13}/></button>
       </section>}
 
       {nav === "Overview" && <>
@@ -487,9 +612,17 @@ export default function Dashboard() {
           </div>
           <div>
             <section className="assistant"><span className="assistant-label"><Sparkles size={13} style={{ display: "inline" }}/> TASKORA PAYMENT ASSISTANT</span><h2>Work completed? Get your crypto request ready.</h2><p>Taskora helps structure the payment details and create a secure link for your client.</p><button onClick={() => { const first = completedJobs.find((job) => isCryptoAsset(job.currency)); if (!first) { notify("Complete a crypto-denominated job first."); return; } void openRequestFor(first); }}><Zap size={14} style={{ display: "inline" }}/> Prepare payment request　<ArrowUpRight size={13} style={{ display: "inline" }}/></button></section>
-            <section className="panel activity"><div className="panel-head"><div><h2 className="panel-title">Payment workflow</h2><p className="panel-sub">Current product capabilities</p></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Record client work</b><span>Jobs and client details are saved privately.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Prepare a crypto request</b><span>Use USDC or NEAR as the requested asset.</span></div></div><div className="activity-row"><Clock3 size={16}/><div><b>On-chain settlement</b><span>Wallet payment and transaction verification are the next integration stage.</span></div></div></section>
+            <section className="panel activity"><div className="panel-head"><div><h2 className="panel-title">Payment workflow</h2><p className="panel-sub">Current product capabilities</p></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Record client work</b><span>Jobs and client details are saved privately.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Prepare a crypto request</b><span>Use USDC or NEAR as the requested asset.</span></div></div><div className="activity-row"><Clock3 size={16}/><div><b>NEAR testnet settlement</b><span>Eligible requests are marked paid only after server-side transaction verification.</span></div></div></section>
           </div>
         </div>
+        <button className="overview-assistant-fab" onClick={() => changePage("Assistant")} aria-label="Open Taskora Assistant" title="Open Taskora Assistant"><span className="overview-assistant-fab-icon"><Sparkles size={18}/></span><span><b>Taskora Assistant</b><small>Explore AI assistance</small></span><ArrowUpRight size={14}/></button>
+      </>}
+
+      {nav === "Notifications" && <>
+        <section className="welcome"><div><p className="eyebrow">WORKSPACE UPDATES</p><h1>Notifications</h1><p className="sub">Updates about your jobs and crypto payment requests. Select an item to open the relevant workspace section.</p></div><span className="pill">{notificationItems.length} updates</span></section>
+        <section className="panel notification-center"><div className="panel-head"><div><h2 className="panel-title">Your notifications</h2><p className="panel-sub">Choose an update to continue where it matters.</p></div></div>
+          {notificationItems.length === 0 ? <div className="empty-state"><Bell size={25}/><b>You're all caught up</b><span>New drafts, shared payment requests and completed jobs needing a request will appear here.</span></div> : notificationItems.map((item,index) => <article className="notification-center-item" key={item.title+"-"+index}><div className="notification-center-icon"><Bell size={15}/></div><div className="notification-center-copy"><b>{item.title}</b><span>{item.detail}</span><small>Workspace update</small></div><button className="mini-action" onClick={() => changePage(item.page)}>Open <ArrowUpRight size={12}/></button></article>)}
+        </section>
       </>}
 
       {nav === "My Jobs" && <>
@@ -501,8 +634,8 @@ export default function Dashboard() {
       {nav === "My Payments" && <>
         <section className="welcome"><div><p className="eyebrow">CRYPTO ACTIVITY</p><h1>My Payments</h1><p className="sub">Monitor payment requests and their settlement status.</p></div><button className="primary" onClick={()=>changePage("Invoices")}><FileText size={16}/> View invoices</button></section>
         <section className="stats compact-stats"><article className="card"><div className="stat-top"><span>Confirmed</span><CheckCircle2 size={17}/></div><div className="stat-value">{paidRequests.length}</div><div className="stat-foot">Verified payment records</div></article><article className="card"><div className="stat-top"><span>Awaiting payment</span><Clock3 size={17}/></div><div className="stat-value">{sharedRequests.length}</div><div className="stat-foot">Shared with clients</div></article><article className="card"><div className="stat-top"><span>Draft requests</span><FileText size={17}/></div><div className="stat-value">{paymentRequests.filter((r)=>r.status==="draft").length}</div><div className="stat-foot">Not yet shared</div></article></section>
-        <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Payment activity</h2><p className="panel-sub">A payment is not marked complete until on-chain verification is implemented.</p></div><span className="pill">Crypto only</span></div>{loading?<p className="panel-sub">Loading payment activity…</p>:requestRows(paymentRequests)}</section>
-        <div className="info-banner"><LockIconText /> Wallet connection and transaction verification are not live yet. Shared links are payment requests, not proof that funds have been received.</div>
+        <section className="panel"><div className="panel-head"><div><h2 className="panel-title">Payment activity</h2><p className="panel-sub">Only payments confirmed by the server-side NEAR testnet verifier are marked paid.</p></div><span className="pill">Crypto only</span></div>{loading?<p className="panel-sub">Loading payment activity…</p>:requestRows(paymentRequests)}</section>
+        <div className="info-banner"><LockIconText /> NEAR testnet checkout is available for eligible requests. A request is marked paid only after server-side transaction verification.</div>
       </>}
 
 
@@ -526,7 +659,7 @@ export default function Dashboard() {
       </>}
 
       {nav === "Settings" && <>
-        <section className="welcome"><div><p className="eyebrow">ACCOUNT PREFERENCES</p><h1>Settings</h1><p className="sub">Manage your Taskora profile and account security.</p></div></section>
+        <section className="welcome"><div><p className="eyebrow">ACCOUNT PREFERENCES</p><h1>Settings</h1><p className="sub">Manage your Taskora profile and account security. <a href="/wallet" style={{ color: "var(--accent, #16a36a)", fontWeight: 600, marginLeft: 6 }}>Connect NEAR wallet ↗</a></p></div></section>
         <div className="settings-layout">
           <section className="panel">
             <div className="panel-head"><div><h2 className="panel-title">Profile information</h2><p className="panel-sub">These details are used to identify your workspace.</p></div></div>
@@ -566,10 +699,13 @@ export default function Dashboard() {
       <div className="form-actions"><button type="button" className="secondary" onClick={()=>setOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={saving}>{saving?"Saving…":<><Plus size={14}/> Add job</>}</button></div>
     </form></div></div>}
 
+    {completionJob && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget&&!saving)setCompletionJob(null);}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="complete-job-title"><div className="modal-head"><div><p className="eyebrow">JOB COMPLETION</p><h2 id="complete-job-title">Complete this job?</h2></div><button className="close" onClick={()=>setCompletionJob(null)} aria-label="Close" disabled={saving}><X size={16}/></button></div><div className="form"><div className="completion-summary"><strong>{completionJob.title}</strong><span>{completionJob.client_name} · {cryptoAmount(Number(completionJob.amount),completionJob.currency)}</span></div><p className="form-hint">Before confirming, make sure the agreed work has been delivered and any useful progress notes or evidence have been recorded in this job. Completion does not mean payment has been received.</p><label className="completion-confirm"><input type="checkbox" checked={completionAcknowledged} onChange={(event)=>setCompletionAcknowledged(event.target.checked)}/><span>I confirm this work has been completed and delivered to the client.</span></label><div className="form-actions"><button type="button" className="secondary" disabled={saving} onClick={()=>setCompletionJob(null)}>Not yet</button><button type="button" className="primary" disabled={saving||!completionAcknowledged} onClick={()=>void confirmJobCompletion()}>{saving?"Completing…":"Confirm completion"}</button></div></div></div></div>}
+
+    {amountEditJob && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget&&!saving)setAmountEditJob(null);}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-job-amount-title"><div className="modal-head"><div><p className="eyebrow">COMPLETED JOB</p><h2 id="edit-job-amount-title">Edit agreed amount</h2></div><button className="close" onClick={()=>setAmountEditJob(null)} aria-label="Close" disabled={saving}><X size={16}/></button></div><form className="form" onSubmit={saveCompletedJobAmount}><div className="completion-summary"><strong>{amountEditJob.title}</strong><span>{amountEditJob.client_name} · NEAR testnet</span></div><div className="field"><label htmlFor="edit-job-amount">New amount (NEAR)</label><input id="edit-job-amount" type="number" required min="0.000001" step="any" value={editedAmount} onChange={(event)=>setEditedAmount(event.target.value)} /></div><p className="form-hint">This updates the completed job and its draft payment requests. The amount is locked after a request is shared or paid. Use a small amount for this testnet checkout; no real funds are involved.</p><div className="form-actions"><button type="button" className="secondary" disabled={saving} onClick={()=>setAmountEditJob(null)}>Cancel</button><button type="submit" className="primary" disabled={saving||!editedAmount||!Number.isFinite(Number(editedAmount))||Number(editedAmount)<=0}>{saving?"Saving…":"Save amount"}</button></div></form></div></div>}
     {requestOpen && <div className="modal-bg" onMouseDown={(event)=>{if(event.target===event.currentTarget)setRequestOpen(false);}}><div className="modal" role="dialog" aria-modal="true"><div className="modal-head"><div><p className="eyebrow">TASKORA ASSISTANT</p><h2>Prepare a crypto invoice</h2></div><button className="close" onClick={()=>setRequestOpen(false)} aria-label="Close"><X size={16}/></button></div><form className="form" onSubmit={savePaymentRequest}>
       <div className="field"><label htmlFor="request-job">Completed job</label><select id="request-job" required value={selected} onChange={(event)=>setSelected(event.target.value)}>{completedJobs.filter((job)=>isCryptoAsset(job.currency)).map((job)=><option key={job.id} value={job.id}>{job.title} — {job.client_name} ({cryptoAmount(Number(job.amount),job.currency)})</option>)}</select></div>
       <div className="field"><label htmlFor="request-note">Work summary for your client</label><textarea id="request-note" maxLength={4000} placeholder="Summarise what was delivered..." value={requestNote} onChange={(event)=>setRequestNote(event.target.value)}/></div>
-      <p className="form-hint">A private, expiring request link will be created. This is not a live payment checkout; wallet settlement and on-chain verification are still being integrated.</p>
+      <p className="form-hint">A private, expiring request link will be created. Eligible NEAR requests can be paid on testnet; the request is marked paid only after server-side verification.</p>
       <div className="form-actions"><button type="button" className="secondary" onClick={()=>setRequestOpen(false)}>Cancel</button><button type="submit" className="primary" disabled={saving||!selected}>{saving?"Saving…":<><FileText size={14}/> Create invoice</>}</button></div>
     </form></div></div>}
     {toast && <div className="toast"><span>{toast}</span>{shareUrl&&<div className="toast-actions"><button type="button" onClick={()=>void navigator.clipboard.writeText(shareUrl)}><Copy size={12}/> Copy link</button><a href={shareUrl} target="_blank" rel="noreferrer">Preview</a></div>}</div>}
@@ -577,5 +713,5 @@ export default function Dashboard() {
 }
 
 function LockIconText() {
-  return <><Clock3 size={17}/> Wallet connection and transaction verification are not live yet. Shared links are requests, not proof that funds have been received.</>;
+  return <><Clock3 size={17}/> NEAR testnet checkout is available for eligible requests. A request is marked paid only after server-side transaction verification.</>;
 }

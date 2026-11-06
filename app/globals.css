@@ -210,3 +210,83 @@ button:disabled{opacity:.65;cursor:not-allowed}
 @media(max-width:420px){
   .settings-signout{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Job milestones and checklist manager */
+.milestone-box{grid-column:1/-1;min-width:0;margin:-3px 0 9px 48px;border:1px solid #edf0e9;border-radius:10px;background:#fbfcf9;overflow:hidden}
+.milestone-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:0;background:transparent;padding:10px 12px;color:#596b4b;text-align:left;font-size:10px;font-weight:800}
+.milestone-toggle>span{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.milestone-toggle small{color:#98a294;font-size:9px;font-weight:500}
+.milestone-content{padding:0 11px 11px}
+.milestone-muted{font-size:10px;color:#98a294;padding:8px 2px;margin:0}
+.milestone-card{border:1px solid #edf0e9;border-radius:9px;background:#fff;padding:11px;margin-top:8px;min-width:0}
+.milestone-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.milestone-title-wrap{display:flex;flex-direction:column;gap:4px;min-width:0}
+.milestone-title-wrap strong{font-size:11px;color:#344138;overflow-wrap:anywhere}
+.milestone-title-wrap small{font-size:9px;color:#9aa39b}
+.milestone-tools{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.milestone-tools select{max-width:112px;border:1px solid #e8ebe3;border-radius:6px;padding:5px 6px;background:#fff;color:#687563;font-size:9px}
+.milestone-tools button,.checklist-item>button,.milestone-edit button{width:26px;height:26px;display:grid;place-items:center;border:1px solid #edf0e9;border-radius:6px;background:#fff;color:#829080}
+.milestone-description{font-size:9px;line-height:1.5;color:#929d91;margin:8px 0}
+.checklist-list{display:grid;gap:3px;margin-top:8px}
+.checklist-item{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.checklist-item label{display:flex;align-items:center;gap:8px;min-width:0;color:#687563;font-size:10px}
+.checklist-item input{accent-color:#829d4b}
+.checklist-item label span{overflow-wrap:anywhere}
+.checklist-item label span.is-done{text-decoration:line-through;color:#a4ada2}
+.checklist-item>button{width:22px;height:22px;border:0;flex-shrink:0}
+.checklist-add,.milestone-create{display:flex;gap:7px;margin-top:9px;min-width:0}
+.checklist-add input,.milestone-create input,.milestone-edit input{min-width:0;flex:1;border:1px solid #e8ebe3;border-radius:7px;padding:8px 9px;font-size:10px;outline:none}
+.checklist-add button,.milestone-create button{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:0;border-radius:7px;background:#edf4dc;color:#596f37;padding:8px 10px;font-size:9px;font-weight:800;white-space:nowrap}
+.milestone-create{flex-wrap:wrap;padding-top:10px}
+.milestone-create input:first-child{flex:1 1 150px}
+.milestone-create input:nth-child(2){flex:1 1 180px}
+.milestone-create button{flex:0 0 auto;background:#26372c;color:#d9f36a}
+.milestone-edit{display:flex;gap:4px;min-width:0}
+.milestone-edit button{flex-shrink:0}
+@media(max-width:760px){.milestone-box{margin:0;}.milestone-card-head{flex-wrap:wrap}.milestone-tools{width:100%;justify-content:flex-start}.milestone-tools select{max-width:150px}.milestone-create{display:grid;grid-template-columns:1fr}.checklist-add input{width:100%}}
+.milestone-overview{padding:0 12px 10px;display:grid;gap:5px}.milestone-progress-track{height:5px;border-radius:99px;background:#e9eee3;overflow:hidden}.milestone-progress-track span{display:block;height:100%;border-radius:99px;background:#91aa58;transition:width .2s ease}.milestone-overview small{font-size:9px;color:#899486}.milestone-error{font-size:10px;color:#a34e42;margin:6px 0;padding:8px;background:#fff4f1;border-radius:6px}.milestone-error button{border:0;background:transparent;color:#7b493e;text-decoration:underline;font-weight:700}
+
+/* Job progress notes and private work evidence */
+.job-updates{grid-column:1/-1;min-width:0;margin:-2px 0 10px 48px;border:1px solid #edf0e9;border-radius:10px;background:#fff;overflow:hidden}
+.job-updates-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:#fbfcf9;color:#596b4b;font-size:10px;font-weight:800}
+.job-updates-heading span{display:flex;align-items:center;gap:8px}.job-updates-heading small{color:#98a294;font-size:9px;font-weight:500}
+.job-update-form{padding:11px;border-bottom:1px solid #edf0e9}.job-update-label{display:block;margin-bottom:7px;color:#53614f;font-size:10px;font-weight:700}
+.job-update-form textarea{display:block;width:100%;min-width:0;resize:vertical;border:1px solid #e5e9e1;border-radius:8px;padding:10px 11px;color:#344138;font:inherit;font-size:10px;line-height:1.55;outline:none}.job-update-form textarea:focus{border-color:#a9bc80;box-shadow:0 0 0 3px #edf3df}
+.job-update-form-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}.job-update-file{display:flex;flex-direction:column;gap:4px;min-width:0}.job-update-file input{max-width:100%;font-size:9px;color:#71806e}.job-update-file small{font-size:8px;color:#9aa39b;overflow-wrap:anywhere}
+.job-update-form-footer>button{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex-shrink:0;border:0;border-radius:7px;background:#26372c;color:#d9f36a;padding:8px 11px;font-size:9px;font-weight:800}.job-update-form-footer>button:disabled{opacity:.45;cursor:not-allowed}.job-update-clear-file{margin-top:7px;border:0;background:transparent;color:#9b5353;font-size:9px;text-decoration:underline}
+.job-update-error{margin:8px 0 0;padding:8px;border-radius:6px;background:#fff4f1;color:#a34e42;font-size:9px}.job-update-error button{border:0;background:transparent;color:#7b493e;text-decoration:underline;font-weight:700}
+.job-update-history{display:grid;gap:0;padding:0 11px}.job-update-muted{margin:0;padding:12px 2px;color:#98a294;font-size:9px}.job-update-entry{padding:11px 2px;border-bottom:1px solid #f0f2ec;min-width:0}.job-update-entry:last-child{border-bottom:0}.job-update-entry-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.job-update-entry-head time{color:#98a294;font-size:8px}.job-update-entry-head button{width:25px;height:25px;display:grid;place-items:center;border:0;border-radius:6px;background:#fafbf8;color:#9b7770}.job-update-entry>p{margin:5px 0 0;color:#59675a;font-size:10px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.job-update-attachment{display:flex;align-items:center;gap:8px;min-width:0;margin-top:8px;padding:8px 9px;border:1px solid #edf0e9;border-radius:7px;background:#fbfcf9;color:#748064}.job-update-attachment>span{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0;font-size:9px;overflow-wrap:anywhere}.job-update-attachment small{font-size:8px;color:#9aa39b}.job-update-attachment a{flex-shrink:0;color:#617b3d;font-size:9px;font-weight:800;text-decoration:underline}
+@media(max-width:760px){.job-updates{margin:0}.job-update-form-footer{align-items:flex-start;flex-direction:column}.job-update-form-footer>button{width:100%;min-height:38px}.job-update-file input{width:100%}}
+
+
+/* Job completion confirmation */
+.completion-summary{display:flex;flex-direction:column;gap:5px;padding:12px;border:1px solid #e8ede1;border-radius:9px;background:#f8faf5}
+.completion-summary strong{font-size:12px;color:#344138;overflow-wrap:anywhere}
+.completion-summary span{font-size:10px;color:#899486}
+.completion-confirm{display:flex;align-items:flex-start;gap:9px;padding:11px;border:1px solid #e8ede1;border-radius:8px;background:#fbfcf9;color:#59675a;font-size:10px;line-height:1.5}
+.completion-confirm input{flex:0 0 auto;margin-top:2px;accent-color:#829d4b}
+.completion-confirm span{min-width:0}
+
+
+/* Notification centre and overview assistant entry point */
+.notification-view-all{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:8px;padding:10px;border:1px solid #e9eee1;border-radius:8px;background:#f8faf4;color:#607644;font-size:10px;font-weight:800}
+.notification-view-all:hover{background:#eff5e5}
+.notification-center{overflow:hidden}
+.notification-center-item{display:flex;align-items:center;gap:12px;padding:14px 2px;border-top:1px solid #f0f2ec;min-width:0}
+.notification-center-icon{width:34px;height:34px;display:grid;place-items:center;flex-shrink:0;border-radius:10px;background:#f1f5e8;color:#718b46}
+.notification-center-copy{display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
+.notification-center-copy b{font-size:11px;color:#344138}
+.notification-center-copy span{font-size:10px;color:#778477;overflow-wrap:anywhere}
+.notification-center-copy small{font-size:8px;color:#a0a99f}
+.notification-center-item>.mini-action{display:inline-flex;align-items:center;gap:5px;flex-shrink:0}
+.overview-assistant-fab{position:fixed;right:28px;bottom:26px;z-index:30;display:flex;align-items:center;gap:10px;padding:10px 14px 10px 10px;border:1px solid #dfe8d1;border-radius:999px;background:#26372c;color:#f7f9f3;box-shadow:0 12px 32px rgba(28,48,32,.22);text-align:left;transition:transform .18s ease,box-shadow .18s ease}
+.overview-assistant-fab:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(28,48,32,.28)}
+.overview-assistant-fab-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#d9f36a;color:#34452c}
+.overview-assistant-fab>span:nth-child(2){display:flex;flex-direction:column;gap:3px}
+.overview-assistant-fab b{font-size:10px;color:#fff}
+.overview-assistant-fab small{font-size:8px;color:#c6d1be}
+.overview-assistant-fab>svg{color:#d9f36a}
+@media(max-width:760px){.overview-assistant-fab{right:16px;bottom:18px;padding:9px 12px 9px 9px}.notification-center-item{align-items:flex-start;flex-wrap:wrap}.notification-center-item>.mini-action{margin-left:46px}}
+@media(max-width:420px){.overview-assistant-fab{right:12px;bottom:14px}.overview-assistant-fab-icon{width:33px;height:33px}}
