@@ -1,87 +1,87 @@
 # Taskora NEAR Testnet Wallet and Payment Implementation
 
-**Status: implementation blueprint. No wallet signing or payment collection is live yet.**
+**Status: implemented and verified on NEAR testnet. Mainnet and real-fund collection remain out of scope.**
 
 ## Product boundary
 
-Taskora remains a private freelancer workspace and crypto payment assistant. It is not becoming a job marketplace.
+Taskora is a private freelancer workspace for recording externally obtained client jobs, tracking delivery and preparing secure crypto payment requests. It is not a job marketplace.
 
-The first NEAR integration is a testnet-only native NEAR payment flow. Do not enable mainnet transfers or real-fund collection in this milestone. USDC remains visible as a supported denomination in the workspace, but its payment button stays unavailable until the exact NEP-141 contract, network deployment, and wallet support are verified.
+The current checkout supports native NEAR on testnet only. Mainnet and USDC settlement are disabled. Wallet keys and seed phrases are never requested or stored.
 
-## User journey
+## Implemented user journey
 
-### Provider (signed-in Taskora user)
+### Provider
 
-1. Connect an existing NEAR-compatible wallet from Taskora Settings.
-2. Taskora stores only the public NEAR account ID and selected network; it never stores wallet keys.
-3. Provider creates/completes a job and generates the existing secure payment link.
-4. The payment request is bound to the provider's connected NEAR account, testnet network, exact asset and exact amount.
-5. Provider can disconnect or change the receiving wallet. Existing requests must keep their originally agreed destination; changing the profile wallet must not silently change an already shared request.
+1. Connect a NEAR testnet wallet from Taskora Settings.
+2. Taskora stores the public NEAR account ID and testnet network, not wallet credentials.
+3. Record a client job, add milestones/checklists and progress updates, then explicitly confirm completion.
+4. Prepare a NEAR-denominated payment request for the completed job.
+5. Share the secure link. The receiving account and exact yoctoNEAR amount are snapshotted when the link is created.
+6. Recopy the existing active link without replacing it, or revoke it when necessary.
 
-### Client (no Taskora account required)
+### Client
 
-1. Open the existing secure payment link.
-2. Review provider, job, amount, network and receiving account.
-3. Connect a compatible wallet.
-4. Explicitly approve a native NEAR testnet transfer to the exact request destination.
-5. Submit the transaction reference for verification.
-6. See a pending state until authoritative NEAR finality and transfer details are verified.
+1. Open the share link without needing a Taskora account.
+2. Review the amount, destination and testnet disclosure.
+3. Connect a compatible NEAR testnet wallet.
+4. Explicitly approve the native NEAR transfer.
+5. Submit the transaction reference for independent verification.
+6. See payment confirmation only after the server verifies the final transaction and records the payment event.
 
-### Server-side verification
+## Server-side verification
 
 A transaction hash supplied by the browser is an untrusted lookup hint, never proof of payment.
 
-The verifier must independently query the NEAR testnet RPC and require all of the following:
+The deployed `verify-near-payment` Edge Function independently queries NEAR testnet and checks:
 
-- Transaction is found on testnet and reaches FINAL execution status.
-- Transaction execution result is successful.
-- Transaction signer matches the submitted payer account.
-- Transaction receiver matches the recipient saved on the payment request.
-- Transaction contains the expected native NEAR Transfer action.
-- Transfer deposit equals the exact request amount in yoctoNEAR (integer/string arithmetic only; never floating point).
-- Payment request is still shared, valid, unexpired, and not already paid.
-- Transaction hash has not already been credited to another request.
+- The transaction is on testnet and reaches FINAL execution status.
+- Transaction execution succeeded.
+- The signer matches the submitted payer account.
+- The receiver matches the recipient saved on the payment request.
+- The transaction contains the expected native NEAR Transfer action.
+- The transfer deposit equals the exact request amount in yoctoNEAR, using integer/string arithmetic rather than floating point.
+- The payment request is still shared, valid, unexpired and not already paid.
+- The transaction hash has not already been credited to another request.
 
-Only the server verifier may create the verified payment event and change a request to paid. The client must never update payment status directly.
+Only the trusted server-side verifier can create the payment event and change a request to paid. Authenticated browser clients do not have permission to update payment status or settlement fields directly.
 
-## Data model work required
+## Database and security implementation
 
-- Provider profile: near_account_id, near_network.
-- Payment request: immutable settlement_network, asset, recipient_account_id, and exact smallest-unit amount.
-- Append-only payment events: request ID, unique transaction hash, payer, recipient, asset, smallest-unit amount, network, finality, verification timestamp and minimal verification evidence.
-- Database uniqueness/constraints to prevent one transaction from being applied more than once.
-- Public request lookup must return only the minimum fields needed for checkout and must not expose private provider/client data.
+- Provider profile stores `near_account_id` and `near_network`; the network constraint is testnet-only.
+- Payment requests snapshot `settlement_network`, `settlement_asset`, `recipient_account_id` and exact `amount_atomic`.
+- `payment_events` records the unique transaction hash, payer, receiver, amount, network, asset, finality, verification time and minimal evidence.
+- A unique transaction-hash constraint prevents duplicate crediting.
+- `finalize_near_payment` is restricted to the service role and performs token revalidation, request locking, event insertion and status transition atomically.
+- Public checkout RPCs validate the high-entropy share token and return only the minimum checkout fields. Personal names, job titles and private work summaries are omitted.
+- Payment request creation is limited to draft rows. Authenticated clients cannot directly update payment status, settlement fields, amounts or owner tokens.
+- Share-token creation and revocation update the share record and owner recovery token atomically inside owner-checked database functions.
+- Completed-job amount editing uses an ownership-checked, locking database function and is rejected once a payment request has been shared or paid.
+- All public tables have RLS enabled. Payment event/share tables have no client-facing policies, so direct access is default-deny.
+- Work evidence is stored in a private bucket with owner/job-scoped storage policies, a 10 MB limit and an allow-list of image, PDF and plain-text types.
+- Foreign-key covering indexes were added for ownership joins and referential checks.
 
-The existing payment_requests.status lifecycle and existing public-share RPC must be extended deliberately; do not allow a public client to mark a request paid.
+## Verification recorded
 
-## Implementation order
+- Supabase Edge Function `verify-near-payment`: version 6 ACTIVE.
+- NEAR verifier mock regression suite: 18 tests passed.
+- Deployed Edge Function negative-path suite: 7 tests passed with synthetic invalid data only.
+- A testnet transaction was independently verified and recorded in Supabase as paid with FINAL execution. Its stored event matches the payment request's exact atomic amount and recipient.
+- Share and revoke regression checks passed using temporary database fixtures inside rolled-back transactions.
+- Authenticated RLS isolation check with a synthetic second-user identity returned zero rows across profiles, clients, jobs, payment requests, milestones, checklist items, work updates and Assistant history.
+- Payment-request privilege checks confirmed authenticated clients cannot directly set payment status or settlement fields.
+- Latest GitHub Actions type-check and production build passed; latest Vercel preview deployment is READY.
 
-1. Add the wallet connector behind a small Taskora adapter and support testnet-compatible wallets only.
-2. Add provider wallet connection in Settings and persist only the public account ID.
-3. Snapshot the provider receiving account and testnet network onto each newly shared payment request.
-4. Add a client-side payment component to the existing /pay/[token] page; keep it accessible without a Taskora login.
-5. Add a server-side verifier using NEAR testnet RPC finality and exact native-transfer checks.
-6. Add an atomic, idempotent database write for verified payment events and request status.
-7. Add pending, failed, retry and already-paid UI states.
-8. Test on testnet with a small test transfer, replay attempts, wrong recipient, wrong amount, wrong network, expired/revoked links and failed transactions.
-9. Keep USDC and mainnet disabled until separately reviewed and tested.
+## Current limitations
 
-## Security and UX rules
+- NEAR testnet only. Do not use real funds.
+- Mainnet and USDC settlement are disabled.
+- The Assistant page and history are present, but AI Gateway authentication is deliberately deferred and is not a dependency of the payment workflow.
+- Supabase leaked-password protection remains disabled due to the current plan limitation.
+- Supabase security warnings for token-scoped public checkout RPCs and authenticated owner-checked SECURITY DEFINER routines are reviewed, intentional and guarded by token/owner validation. Payment event/share tables remain default-deny to direct clients.
 
-- Never request, store or transmit seed phrases, private keys or wallet passwords.
-- Wallet approval must be explicit and show the exact amount, asset, network and recipient.
-- Never auto-submit a transaction.
-- Do not claim that a wallet connection means a payment was made.
-- Do not mark a payment paid based on a wallet callback, redirect, screenshot or client-supplied status.
-- Use a server-only Supabase privileged credential only inside a trusted server/Edge Function environment; never place it in a NEXT_PUBLIC_ variable or browser bundle.
-- Do not add AI Gateway dependency as part of wallet integration; the existing guided assistant remains separate.
-- No escrow or marketplace functionality is introduced by this milestone.
+## Final release checks
 
-## Current verified baseline
-
-- Existing secure payment request links and revocation are implemented.
-- Public request page currently displays payment details but explicitly says wallet collection is not enabled.
-- Supabase currently has profiles, clients, jobs, payment_requests, payment_request_shares and assistant tables, all with RLS enabled.
-- There is no provider wallet field, immutable payment destination snapshot, payment-event table, wallet connector dependency or transaction verifier yet.
-- Current payment request statuses are draft/shared/paid/cancelled.
-- Current job/payment currencies are USDC and NEAR, but neither asset is currently collectible through the app.
+- Browser-test the latest preview for draft creation, link sharing, recopy without re-sharing, revocation and invalid/expired-link handling.
+- Browser-test milestone/checklist persistence and progress evidence upload/download.
+- Complete the judge walkthrough, screenshots and demo recording.
+- Keep all payment demonstrations on NEAR testnet.
