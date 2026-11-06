@@ -41,8 +41,8 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 
 - [x] NEAR verifier mock regression suite: 18 tests passed.
 - [x] Live Edge Function negative-path smoke suite: 7 tests passed using synthetic invalid data only.
-- [x] Latest GitHub Actions run passed TypeScript checking and the Next.js production build.
-- [x] Latest Vercel preview deployment completed successfully.
+- [x] GitHub Actions run #149 passed for PR head 8f51c0a (verifier regression suite, TypeScript check and Next.js production build).
+- [ ] Vercel preview for the current PR head 8f51c0a is still building; verify it reaches READY before recording. The preceding commit 08ca29b has a READY preview.
 - [x] Supabase has 21 applied migrations.
 - [x] Database security review confirmed RLS on all public tables and private work-evidence storage.
 - [x] Authenticated RLS isolation check with a synthetic second-user identity returned zero rows across user-owned data tables.
@@ -58,7 +58,7 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 
 - [x] Owner browser-tested the payment-link lifecycle: create/share, recopy the same active link, revoke, and confirm the old link returns “Payment request unavailable”.
 - [x] Owner reports the workspace tools are working correctly in browser testing.
-- [ ] Complete the judge walkthrough, screenshots and demo recording.
+- [ ] Complete the judge walkthrough, screenshots and demo recording using the timed script and capture list in docs/judge-demo.md.
 - [ ] Keep USDC settlement and mainnet disabled unless a separate supported network/asset review is completed.
 
 ## NEAR integration principle
