@@ -33,6 +33,7 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 - [x] Atomic completed-job amount update RPC.
 - [x] Payment-request insert/update privileges restricted so clients cannot set paid status or settlement fields directly.
 - [x] Share-token persistence and revocation performed atomically inside owner-checked database functions.
+- [x] Raw owner tokens excluded from direct table reads; recopy uses an owner-only RPC that rejects expired or revoked links.
 - [x] Foreign-key covering indexes for ownership relationships and joins.
 - [x] Persistent Assistant conversations and messages with owner-scoped RLS.
 
