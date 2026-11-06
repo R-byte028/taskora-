@@ -615,6 +615,7 @@ export default function Dashboard() {
             <section className="panel activity"><div className="panel-head"><div><h2 className="panel-title">Payment workflow</h2><p className="panel-sub">Current product capabilities</p></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Record client work</b><span>Jobs and client details are saved privately.</span></div></div><div className="activity-row"><CheckCircle2 size={16}/><div><b>Prepare a crypto request</b><span>Use USDC or NEAR as the requested asset.</span></div></div><div className="activity-row"><Clock3 size={16}/><div><b>NEAR testnet settlement</b><span>Eligible requests are marked paid only after server-side transaction verification.</span></div></div></section>
           </div>
         </div>
+        <button className="overview-assistant-fab" onClick={() => changePage("Assistant")} aria-label="Open Taskora Assistant" title="Open Taskora Assistant"><span className="overview-assistant-fab-icon"><Sparkles size={18}/></span><span><b>Taskora Assistant</b><small>Explore AI assistance</small></span><ArrowUpRight size={14}/></button>
       </>}
 
       {nav === "Notifications" && <>
@@ -622,8 +623,6 @@ export default function Dashboard() {
         <section className="panel notification-center"><div className="panel-head"><div><h2 className="panel-title">Your notifications</h2><p className="panel-sub">Choose an update to continue where it matters.</p></div></div>
           {notificationItems.length === 0 ? <div className="empty-state"><Bell size={25}/><b>You're all caught up</b><span>New drafts, shared payment requests and completed jobs needing a request will appear here.</span></div> : notificationItems.map((item,index) => <article className="notification-center-item" key={item.title+"-"+index}><div className="notification-center-icon"><Bell size={15}/></div><div className="notification-center-copy"><b>{item.title}</b><span>{item.detail}</span><small>Workspace update</small></div><button className="mini-action" onClick={() => changePage(item.page)}>Open <ArrowUpRight size={12}/></button></article>)}
         </section>
-      </>}
-        <button className="overview-assistant-fab" onClick={() => changePage("Assistant")} aria-label="Open Taskora Assistant" title="Open Taskora Assistant"><span className="overview-assistant-fab-icon"><Sparkles size={18}/></span><span><b>Taskora Assistant</b><small>Explore AI assistance</small></span><ArrowUpRight size={14}/></button>
       </>}
 
       {nav === "My Jobs" && <>
