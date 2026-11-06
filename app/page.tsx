@@ -14,7 +14,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 type JobRow = Tables<"jobs">;
 type ClientRow = Tables<"clients">;
 type PaymentRequestRow = Tables<"payment_requests">;
-type PaymentRequestView = PaymentRequestRow & { client_name: string; job_title: string };
+type PaymentRequestView = Omit<PaymentRequestRow, "owner_share_token"> & { client_name: string; job_title: string };
 type JobStatus = "in_progress" | "completed" | "cancelled";
 type JobView = JobRow & { client_name: string };
 type PageName = "Overview" | "My Jobs" | "My Payments" | "Invoices" | "Assistant" | "Settings";
@@ -80,7 +80,7 @@ export default function Dashboard() {
     const [{ data: jobRows, error: jobsError }, { data: clients, error: clientsError }, { data: requestRows, error: requestsError }, { data: profile }] = await Promise.all([
       supabase.from("jobs").select("*").order("created_at", { ascending: false }),
       supabase.from("clients").select("*").order("created_at", { ascending: false }),
-      supabase.from("payment_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("payment_requests").select("id,user_id,job_id,client_id,amount,currency,work_summary,status,created_at,updated_at,settlement_network,settlement_asset,recipient_account_id,amount_atomic").order("created_at", { ascending: false }),
       supabase.from("profiles").select("full_name,business_name").eq("id", user.id).maybeSingle(),
     ]);
     setProfileFullName(profile?.full_name ?? "");
@@ -96,7 +96,7 @@ export default function Dashboard() {
       ...job,
       client_name: job.client_id ? clientMap.get(job.client_id) ?? "Client" : "No client",
     })));
-    setPaymentRequests((requestRows ?? []).map((request: PaymentRequestRow) => ({
+    setPaymentRequests((requestRows ?? []).map((request: Omit<PaymentRequestRow, "owner_share_token">) => ({
       ...request,
       client_name: clientMap.get(request.client_id) ?? "Client",
       job_title: jobMap.get(request.job_id)?.title ?? "Job",
@@ -320,7 +320,7 @@ export default function Dashboard() {
     const summary = requestNote.trim() || job.description || "Work completed as agreed.";
     const { data: paymentRequest, error } = await supabase.from("payment_requests").insert({
       user_id: user.id, job_id: job.id, client_id: job.client_id,
-      amount: Number(job.amount), currency: job.currency, work_summary: summary, status: "draft",
+      amount: Number(job.amount), currency: job.currency, work_summary: summary,
     }).select("id").single();
     if (error || !paymentRequest) {
       setSaving(false);
