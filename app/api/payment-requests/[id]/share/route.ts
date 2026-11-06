@@ -47,15 +47,6 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: error?.message ?? "Couldn't create the secure link." }, { status: 400 });
   }
 
-  const { error: saveError } = await supabase.from("payment_requests")
-    .update({ owner_share_token: token })
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .eq("status", "shared");
-  if (saveError) {
-    return NextResponse.json({ error: "The link was created, but could not be saved for later copying. Please contact support before creating another link." }, { status: 500 });
-  }
-
   const shareUrl = new URL(`/pay/${token}`, request.url).toString();
   return NextResponse.json({ shareUrl, expiresAt }, { headers: { "Cache-Control": "no-store, private" } });
 }
