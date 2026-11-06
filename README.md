@@ -64,7 +64,8 @@ Taskora is still a testnet build, not a live payment product.
 - Duplicate transaction use is rejected.
 - Public checkout responses omit personal names, job titles and private work summaries.
 - Shared links are payment requests, not proof that funds have been received.
-- A successful end-to-end wallet payment has not yet been demonstrated in the browser. The existing test transaction was confirmed final on NEAR testnet, but the original checkout still needs a fresh verification retry to confirm the database finalization path.
+- **End-to-end testnet checkout has now been completed:** the user completed the wallet transaction and the checkout displayed “Payment verified” with independent NEAR testnet verification.
+- This validates the testnet verification path; it does not enable mainnet or real-fund collection.
 - Do not use real funds or describe this build as ready for real payment collection.
 
 ## Verification recorded
@@ -72,10 +73,11 @@ Taskora is still a testnet build, not a live payment product.
 - GitHub Actions: TypeScript check and Next.js production build passed for the current feature-branch commit.
 - NEAR verifier mock regression suite: 18 tests passed.
 - Deployed Edge Function negative-path suite: 7 tests passed using synthetic invalid data.
+- User-confirmed browser checkout displayed successful independent NEAR testnet verification.
 - Supabase migrations for the Assistant, milestones, work updates, secure payment links and NEAR settlement are applied.
 - Database security review confirmed RLS on all public tables, private evidence storage and restricted execution of privileged payment-finalization functions.
 
-These checks do not replace the outstanding authenticated browser tests.
+Authenticated sign-up, email confirmation and full Assistant chat runtime still need a separate browser walkthrough.
 
 ## NEAR hackathon walkthrough
 
@@ -83,11 +85,11 @@ These checks do not replace the outstanding authenticated browser tests.
 2. Create a client job and track milestones, checklist items and progress updates.
 3. Confirm completion and prepare a secure NEAR testnet payment request.
 4. Open the client checkout page and review the amount, recipient and testnet disclosure.
-5. Demonstrate the verifier's acceptance and rejection rules with the documented regression and negative-path suites.
-6. Revoke a separate share link and confirm the old link is no longer usable.
-7. Demonstrate the Assistant's read-only workspace summaries and job/payment lookups.
-
-Do not claim a successful live payment until the complete wallet-to-database flow has been safely validated. See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
+5. Connect a NEAR testnet wallet and complete the requested testnet transfer.
+6. Show the checkout's independent “Payment verified” confirmation.
+7. Demonstrate the verifier's rejection rules with the documented regression and negative-path suites.
+8. Demonstrate the Assistant's read-only workspace summaries and job/payment lookups.
+9. Revoke a separate share link and confirm the old link is no longer usable. See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
 
 ## Verifier tests
 
