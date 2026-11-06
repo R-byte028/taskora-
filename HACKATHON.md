@@ -4,7 +4,7 @@
 
 Taskora is a crypto-first workspace for freelancers and small businesses to record externally obtained client jobs, track delivery, confirm completion and prepare secure payment requests. It is not a job marketplace.
 
-**Settlement status:** NEAR testnet checkout and server-side verification code are implemented. Mainnet and USDC settlement are not enabled. Do not use real funds or describe this build as ready to collect payments. USDC may appear as a job denomination, but it is not a supported checkout asset.
+**Settlement boundary:** the current payment flow is NEAR testnet only. Mainnet and USDC settlement are not enabled. Do not use real funds or describe this build as ready to collect real payments.
 
 ## Implemented frontend
 
@@ -15,51 +15,54 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 - [x] Explicit job-completion confirmation, separate from payment status.
 - [x] Milestones and checklist items with progress tracking.
 - [x] Dated work updates and private work-evidence attachments.
-- [x] Secure client payment-request links, draft retry and link revocation.
-- [x] Completed-job amount editing, guarded by a single atomic database operation.
+- [x] Secure client payment-request links, draft retry, revocation and owner-only link recopy.
+- [x] Completed-job amount editing, guarded by an atomic database operation.
 - [x] NEAR testnet wallet-connect and checkout UI.
-- [x] Clear testnet-only / not-for-real-funds boundary.
+- [x] Assistant chat interface with persistent conversation history.
 
 ## Implemented backend
 
-- [x] Supabase profiles, clients, jobs and payment_requests.
-- [x] Row Level Security and owner-only data access.
+- [x] Supabase profiles, clients, jobs, milestones, checklist items, work updates and payment requests.
+- [x] Row Level Security and owner-only data access across public tables.
+- [x] Private work-evidence storage with owner/job-scoped policies.
 - [x] Secure token-hash-based public payment links.
-- [x] Public checkout RPCs with share-token validation.
-- [x] NEAR testnet verification Edge Function.
+- [x] Public checkout RPCs with share-token validation and minimal response fields.
+- [x] NEAR testnet verification Edge Function, deployed as version 6.
 - [x] Final-execution, signer, recipient, action and exact-amount checks before payment finalization.
 - [x] Duplicate transaction protection and atomic payment finalization.
-- [x] Atomic completed-job amount update RPC; rejects changes once a related request is no longer draft.
+- [x] Atomic completed-job amount update RPC.
 - [x] Anonymous direct table access to payment_requests revoked.
+- [x] Persistent Assistant conversations and messages with owner-scoped RLS.
+- [x] Vercel AI Gateway chat endpoint with bounded input, authenticated workspace access and allow-listed read-only tools.
+- [x] Assistant tool access limited to workspace summary, job listing and pending-payment listing; no payment or record mutations.
 
 ## Verification completed
 
-- [x] Mock-only verifier regression suite: 17 tests passed in the recorded run.
-- [x] Live Edge Function negative-path smoke suite: 7 tests passed after deploying verifier version 5. These use synthetic invalid data only and do not submit a transaction. These use synthetic invalid data only and do not submit a transaction.
-- [x] Latest Vercel preview for the current feature branch completed successfully.
-- [x] Latest preview login route returned HTTP 200.
-- [x] Database function metadata and execute grants for the atomic amount-update RPC were checked.
+- [x] NEAR verifier mock regression suite: 18 tests passed.
+- [x] Live Edge Function negative-path smoke suite: 7 tests passed using synthetic invalid data only.
+- [x] GitHub Actions TypeScript check and Next.js production build passed for the current feature-branch commit.
+- [x] Latest Vercel preview deployment completed successfully.
+- [x] Supabase migrations for Assistant history, NEAR settlement, milestones, work updates and secure link controls are applied.
+- [x] Database security review confirmed RLS on all public tables, private work-evidence storage and restricted execution of privileged settlement functions.
 
-These checks do not prove a successful end-to-end payment. No successful live payment has been demonstrated. The deployed verifier is version 5 and includes malformed JSON-RPC response and non-object request-body guards.
+These checks do not prove a successful end-to-end payment or a successful authenticated AI chat request. The test transaction was confirmed final on NEAR testnet, but the original checkout still needs a fresh verification retry to confirm payment finalization in the database. The AI chat route is implemented and the preview builds, but authenticated runtime verification remains outstanding.
 
 ## Remaining work
 
+- [ ] Retry verification from the original testnet checkout page and confirm that the payment request becomes paid.
 - [ ] Browser-test sign-up, email confirmation, sign-in and sign-out.
-- [ ] Browser-test secure link creation, expiry, revocation and invalid-link handling.
-- [x] Minimise public checkout data: public RPCs no longer populate client/provider names, job title or private work summary.
-- [x] Reconcile and deploy the reviewed verifier source as Edge Function version 5; keep `verify_jwt = false` because the endpoint validates share tokens in its own handler.
-- [ ] Add a safe, deterministic demonstration of payment verification that does not require real funds or a real wallet transaction.
-- [ ] Connect an actual AI service/agent runtime; the current Assistant is a guided, rule-based workflow preview.
-- [ ] Confirm the exact USDC token contract and supported network before considering any future USDC settlement.
-- [ ] Prepare final judge walkthrough, screenshots and demo recording.
+- [ ] Browser-test secure link creation, expiry, revocation, recopy and invalid-link handling.
+- [ ] Confirm an authenticated Assistant chat request succeeds through the Vercel AI Gateway and persists in conversation history.
+- [ ] Complete the judge walkthrough, screenshots and demo recording.
+- [ ] Keep USDC settlement and mainnet disabled unless a separate supported network/asset review is completed.
 
 ## NEAR integration principle
 
 A wallet connection or client-side success message is never proof of payment. The backend must independently verify final transaction execution, signer, recipient, asset/action and exact amount before a request can be marked paid.
 
-## Current limitations
+## Assistant safety principle
 
-The job workflow, milestones/checklists, evidence timeline, completion confirmation, secure payment links, NEAR testnet checkout code and server-side verifier are committed. The 17 mock regression tests and 7 live negative-path HTTP tests pass, and the deployed Edge Function is version 5. The complete successful payment flow has not been demonstrated. The Assistant is not yet an AI model or autonomous agent. USDC settlement and mainnet are disabled.
+The Assistant is a read-only helper. It can retrieve a signed-in user's workspace summary, jobs and shared payment requests. It cannot create or modify records, issue or revoke links, transfer assets or mark a request paid. All state-changing actions remain explicit user actions in the Taskora interface.
 
 ## Judge walkthrough
 
@@ -68,8 +71,11 @@ The job workflow, milestones/checklists, evidence timeline, completion confirmat
 3. Add milestones and checklist items, then record progress and evidence.
 4. Confirm completion and prepare a payment request.
 5. Open the client-facing request page and review the amount, destination and testnet disclosure.
-6. Demonstrate the verifier's acceptance rules with deterministic mock fixtures and the live negative-path smoke suite. Do not submit a wallet transaction or use real funds.
-7. Revoke a separate share link and confirm that the old link is no longer usable.
+6. Demonstrate verifier acceptance and rejection rules with deterministic mock fixtures and the live negative-path smoke suite.
+7. Demonstrate the Assistant's read-only job and payment lookups.
+8. Revoke a separate share link and confirm that the old link is no longer usable.
+
+Do not stage a successful payment claim until the full wallet-to-database flow has been safely validated.
 
 ## Judge-ready acceptance checks
 
@@ -77,12 +83,13 @@ The job workflow, milestones/checklists, evidence timeline, completion confirmat
 | --- | --- |
 | Create a job | It appears in My Jobs with its denomination clearly labelled. |
 | Add milestones/checklist items | Saved progress remains after refresh. |
-| Add a work update and evidence | The update appears in the job history; evidence remains private. |
+| Add a work update and evidence | The update appears in job history; evidence remains private. |
 | Confirm job completion | Explicit acknowledgement is required; completion does not imply payment. |
 | Edit a completed job amount | The atomic operation updates the job and draft requests together, or rejects the change if a request is already shared/paid. |
-| Create a payment request | A private share link is generated; duplicate requests are blocked. |
-| Open a client link | The client sees the request details and testnet-only disclosure. |
-| Run verifier regression tests | Valid fixture rules pass; malformed, pending, mismatched and duplicate cases are rejected. |
+| Create a payment request | A secure share link is generated; duplicate requests are blocked. |
+| Open a client link | The client sees request details and the testnet-only disclosure. |
+| Run verifier regression tests | Valid fixtures pass; malformed, pending, mismatched and duplicate cases are rejected. |
+| Ask the Assistant for workspace data | It uses authenticated read-only tools and stores the conversation privately. |
 | Revoke a share link | The previously issued link no longer reveals the request. |
 
-**Release gate:** do not claim successful payment collection or record a successful payment demo until the full integration has been independently reviewed and safely validated. Mainnet and real-fund collection remain out of scope for this build.
+**Release gate:** do not claim successful payment collection or record a successful payment demo until the full integration has been independently reviewed and safely validated. Mainnet and real-fund collection remain out of scope.
