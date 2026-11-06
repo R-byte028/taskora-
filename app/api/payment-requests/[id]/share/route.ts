@@ -15,19 +15,21 @@ export async function GET(request: Request, context: RouteContext) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: "Please sign in to access this link." }, { status: 401 });
 
-  const { data, error } = await supabase.from("payment_requests")
-    .select("status,owner_share_token")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_active_payment_request_share", {
+    p_request_id: id,
+  });
+  const activeShare = !error ? data?.[0] : undefined;
 
-  if (error || !data) return NextResponse.json({ error: "Payment request not found." }, { status: 404 });
-  if (data.status !== "shared" || !data.owner_share_token) {
-    return NextResponse.json({ error: "The active link cannot be recovered. Create a new link from a draft request." }, { status: 409 });
+  if (error || !activeShare?.share_token) {
+    return NextResponse.json({
+      error: "There is no active link to copy. It may have expired or been revoked; create a fresh link before sharing again.",
+    }, { status: 409 });
   }
 
-  const shareUrl = new URL(`/pay/${data.owner_share_token}`, request.url).toString();
-  return NextResponse.json({ shareUrl }, { headers: { "Cache-Control": "no-store, private" } });
+  const shareUrl = new URL(`/pay/${activeShare.share_token}`, request.url).toString();
+  return NextResponse.json({ shareUrl, expiresAt: activeShare.expires_at }, {
+    headers: { "Cache-Control": "no-store, private" },
+  });
 }
 
 export async function POST(request: Request, context: RouteContext) {
