@@ -136,7 +136,9 @@ export async function POST(request: Request) {
   if (authError || !user) return errorResponse("Sign in to use Taskora Assistant.", 401);
 
   const apiKey = process.env.AI_GATEWAY_API_KEY;
-  const oidcToken = process.env.VERCEL_OIDC_TOKEN;
+  // Vercel Functions expose the deployment OIDC token on the incoming request header.
+  // Keep the env fallback for local development where `vercel env pull` supplies it.
+  const oidcToken = request.headers.get("x-vercel-oidc-token") || process.env.VERCEL_OIDC_TOKEN;
   if (!apiKey && !oidcToken) {
     return errorResponse("Taskora Assistant AI is not configured yet. Add AI Gateway authentication to the Vercel project environment.", 503);
   }
