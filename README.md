@@ -84,6 +84,8 @@ Sign-up, email confirmation and sign-in have been tested. Owner browser testing 
 
 ## NEAR hackathon walkthrough
 
+The concise [judge demo guide](./docs/judge-demo.md) includes the timed walkthrough, screenshot checklist and recording safety notes.
+
 1. Sign in to the Taskora workspace.
 2. Create a client job and track milestones, checklist items and progress updates.
 3. Confirm completion and prepare a secure NEAR testnet payment request.
