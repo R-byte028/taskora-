@@ -71,7 +71,7 @@ Only the trusted server-side verifier can create the payment event and change a 
 - Authenticated RLS isolation check with a synthetic second-user identity returned zero rows across profiles, clients, jobs, payment requests, milestones, checklist items, work updates and Assistant history.
 - Payment-request privilege checks confirmed authenticated clients cannot directly set payment status or settlement fields.
 - GitHub Actions run #149 passed for PR head 8f51c0a, including verifier regression tests, TypeScript checking and the Next.js production build.
-- The Vercel deployment for current PR head 8f51c0a was still BUILDING at the latest check. The preceding commit 08ca29b has a READY preview; confirm the current head reaches READY before recording.
+- The application-code commit 8f51c0a has a READY Vercel preview (deployment dpl_9D92zb1PiZgkHHNCGwp3W6acqGMh). Later commits in this judge-pack pass are documentation-only; verify the newest branch preview is READY before recording.
 
 ## Current limitations
 
