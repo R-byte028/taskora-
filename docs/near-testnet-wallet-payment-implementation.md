@@ -70,7 +70,8 @@ Only the trusted server-side verifier can create the payment event and change a 
 - Share and revoke regression checks passed using temporary database fixtures inside rolled-back transactions.
 - Authenticated RLS isolation check with a synthetic second-user identity returned zero rows across profiles, clients, jobs, payment requests, milestones, checklist items, work updates and Assistant history.
 - Payment-request privilege checks confirmed authenticated clients cannot directly set payment status or settlement fields.
-- Latest GitHub Actions type-check and production build passed; latest Vercel preview deployment is READY.
+- GitHub Actions run #149 passed for PR head 8f51c0a, including verifier regression tests, TypeScript checking and the Next.js production build.
+- The Vercel deployment for current PR head 8f51c0a was still BUILDING at the latest check. The preceding commit 08ca29b has a READY preview; confirm the current head reaches READY before recording.
 
 ## Current limitations
 
@@ -82,5 +83,7 @@ Only the trusted server-side verifier can create the payment event and change a 
 
 ## Final release checks
 
+- Use docs/judge-demo.md for the four-minute speaking script, screenshot capture list and recording checklist.
+- Confirm the preview for the exact PR head is READY before recording; do not assume an older deployment reflects the latest docs.
 - Complete the judge walkthrough, screenshots and demo recording.
 - Keep all payment demonstrations on NEAR testnet.
