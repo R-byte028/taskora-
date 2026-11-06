@@ -2,26 +2,28 @@
 
 **Work done. Payments moving.**
 
-Taskora is a crypto-first workspace for freelancers and small businesses to organise client jobs and prepare secure crypto payment requests for completed work, with NEAR as the target settlement ecosystem.
+Taskora is a crypto-first workspace for freelancers and small businesses to record externally obtained client jobs, track delivery, confirm completion and prepare secure payment requests. It is not a job marketplace.
 
 ## Current build
 
-- Email/password sign-up and sign-in with Supabase Auth
-- Email confirmation callback and protected workspace
-- Persistent client and job records in Supabase
-- Collapsible responsive workspace navigation
-- Overview, My Jobs, My Payments, Invoices, Assistant and Settings views
-- Workspace-wide search across jobs, clients and payment requests
-- Action-oriented notifications for draft requests, shared requests and completed jobs
-- Profile editing and authenticated password updates in Settings
-- Crypto-only job and payment-request denominations: USDC and NEAR
-- USDC as the default USD-pegged crypto denomination
-- Separate display of USDC and NEAR totals
-- Guided Taskora Assistant preview connected to the signed-in user's jobs and payment requests
-- Assistant quick actions to filter completed/active jobs, review pending requests, summarise the workspace and prepare an invoice
-- Secure client links using random server-side tokens; only token hashes are stored
-- Review saved payment requests, retry draft sharing and revoke active links
-- Owner-only Row Level Security on profiles, clients, jobs and payment requests
+- Email/password sign-up, sign-in and email confirmation through Supabase Auth.
+- Persistent client, job, milestone, checklist, work-update and payment-request records.
+- Responsive Overview, My Jobs, My Payments, Invoices, Assistant and Settings workspace.
+- Workspace search, actionable notifications, profile editing and password updates.
+- Explicit job-completion confirmation, separate from payment status.
+- Private work-evidence storage with owner-scoped access.
+- Secure client payment links, draft retry, link revocation and owner-only link recopy.
+- NEAR testnet wallet connection and client checkout UI.
+- Server-side NEAR testnet transaction verification and atomic payment finalization.
+- Persistent Assistant conversations stored in private Supabase tables.
+- AI Assistant connected to Vercel AI Gateway, with allow-listed read-only tools for workspace summaries, job lists and pending payment requests.
+- Assistant actions that could change records remain user-reviewed in the Taskora interface.
+
+## Assistant safety and runtime
+
+The Assistant uses the Vercel AI Gateway model configured by `AI_GATEWAY_MODEL`; the current code fallback is `alibaba/qwen-3-32b`. Vercel deployments use the deployment OIDC token when available. Local or non-Vercel environments can provide `AI_GATEWAY_API_KEY` without committing it.
+
+The Assistant tools are read-only. They cannot create or edit jobs, create or revoke payment links, transfer assets, or mark requests paid. Shared requests are never described as confirmed payments. USDC and NEAR values are kept separate.
 
 ## Run locally
 
@@ -34,77 +36,71 @@ Requirements: Node.js 20.9 or later.
    npm install
    ```
 
-3. Copy `.env.example` to `.env.local`. The example contains the Taskora project URL and public publishable key.
-4. Start the app:
+3. Copy `.env.example` to `.env.local`. It contains the Taskora Supabase URL and publishable key plus the optional AI Gateway model setting.
+4. For local AI requests, configure an AI Gateway API key in your uncommitted `.env.local`. Never paste it into source code or commit it.
+5. Start the app:
 
    ```bash
    npm run dev
    ```
 
-5. Open http://localhost:3000, create an account and confirm your email if prompted.
+6. Open http://localhost:3000 and sign in.
 
-The publishable key is designed for use in a public client application. Never expose a Supabase secret or service-role key in a `NEXT_PUBLIC_*` variable or commit one to Git.
+The Supabase publishable key is designed for use in a public client application. Never expose a Supabase secret or service-role key in a `NEXT_PUBLIC_*` variable or commit one to Git.
 
 ## Supabase project
 
-Taskora uses the dedicated Supabase project `basqoozudxgomnccrnub`. Its database includes profiles, clients, jobs and payment_requests. Row Level Security limits each signed-in user to their own records.
+Taskora uses the dedicated Supabase project `basqoozudxgomnccrnub`. Its database includes profiles, clients, jobs, milestones, checklist items, work updates, payment requests, payment events and Assistant conversation history.
 
-The crypto-only currency migration sets USDC as the default and allows USDC or NEAR. Fiat currencies are not accepted for new records.
+All public tables have Row Level Security enabled. User-owned records are scoped to the authenticated owner. The work-evidence bucket is private and has owner/job-scoped storage policies.
 
-## Important limitations
+## Payment status and limitations
 
-Taskora is not a live payment product yet.
+Taskora is still a testnet build, not a live payment product.
 
-- Secure client-facing share links use random server-side tokens; only SHA-256 hashes are stored.
-- Secure-sharing, revocation and crypto-only currency migrations are applied to the Taskora Supabase project.
-- NEAR Connect wallet integration, NEAR testnet transfer submission and a server-side final-transaction verifier are implemented in the current branch, but a complete live-wallet end-to-end test is still required before treating the flow as demo-verified.
-- Shared links are requests for payment, not proof that funds have been received. A request is marked paid only after the backend verifies final transaction execution, signer, recipient and exact amount.
-- Confirmed-payment totals must only include authoritative on-chain verification.
-- The Assistant currently uses transparent guided workflow rules; it is not connected to an AI model or autonomous agent runtime yet.
-- USDC settlement on NEAR is not enabled; the exact token contract and network deployment must be verified first.
+- NEAR checkout is testnet-only. Mainnet and USDC settlement are not enabled.
+- The deployed `verify-near-payment` Edge Function is active at version 6.
+- The verifier checks final execution, signer, recipient, transfer action and exact amount before atomic payment finalization.
+- Duplicate transaction use is rejected.
+- Public checkout responses omit personal names, job titles and private work summaries.
+- Shared links are payment requests, not proof that funds have been received.
+- A successful end-to-end wallet payment has not yet been demonstrated in the browser. The existing test transaction was confirmed final on NEAR testnet, but the original checkout still needs a fresh verification retry to confirm the database finalization path.
+- Do not use real funds or describe this build as ready for real payment collection.
 
-Do not use the current build to collect real funds.
+## Verification recorded
 
-## Tech stack
+- GitHub Actions: TypeScript check and Next.js production build passed for the current feature-branch commit.
+- NEAR verifier mock regression suite: 18 tests passed.
+- Deployed Edge Function negative-path suite: 7 tests passed using synthetic invalid data.
+- Supabase migrations for the Assistant, milestones, work updates, secure payment links and NEAR settlement are applied.
+- Database security review confirmed RLS on all public tables, private evidence storage and restricted execution of privileged payment-finalization functions.
 
-- Next.js 15, React 19 and TypeScript
-- Supabase PostgreSQL and Auth
-- `@supabase/ssr` and `@supabase/supabase-js`
-- Tailwind CSS and Lucide icons
+These checks do not replace the outstanding authenticated browser tests.
 
-## NEAR hackathon flow
+## NEAR hackathon walkthrough
 
-1. Provider records an externally obtained client job.
-2. Provider tracks milestones, checklist items and work updates.
-3. Provider explicitly confirms completion.
-4. Taskora prepares a secure NEAR testnet payment request.
-5. Client reviews a minimal public checkout page through an expiring share link.
-6. The server-side verifier is designed to confirm final execution, signer, recipient and exact amount before marking a request paid.
+1. Sign in to the Taskora workspace.
+2. Create a client job and track milestones, checklist items and progress updates.
+3. Confirm completion and prepare a secure NEAR testnet payment request.
+4. Open the client checkout page and review the amount, recipient and testnet disclosure.
+5. Demonstrate the verifier's acceptance and rejection rules with the documented regression and negative-path suites.
+6. Revoke a separate share link and confirm the old link is no longer usable.
+7. Demonstrate the Assistant's read-only workspace summaries and job/payment lookups.
 
-The verifier is deployed as Supabase Edge Function version 5. Its mock regression suite has 17 passing tests and its live negative-path suite has 7 passing tests. A successful end-to-end payment has not been demonstrated. Do not submit a wallet transaction or use real funds for the current review.
+Do not claim a successful live payment until the complete wallet-to-database flow has been safely validated. See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
 
-See [HACKATHON.md](./HACKATHON.md) and [the NEAR payment integration plan](./docs/near-payment-integration-plan.md).
+## Verifier tests
 
-## Hackathon demo checklist
-
-Use [HACKATHON.md](./HACKATHON.md) for the full implementation status and judge walkthrough. Demonstrate the job lifecycle, milestones/checklist, progress evidence, explicit completion, secure request creation, minimal client checkout, link revocation and verifier regression/negative-path tests. Do not stage a successful payment claim until the full flow has been safely validated.
-
-**Demo status:** the NEAR wallet and verifier code is present, but do not claim a successful live payment until the complete flow has been tested against the deployed testnet backend.
-
-## Verifier regression tests
-
-Run the local, mock-only NEAR verifier guard suite with:
+Run the mock-only regression suite:
 
 ```bash
 npm run test:near-verifier
 ```
 
-The tests use fixed fixtures and injected mock responses. They cover payment-context validation, final-execution result shape, exact transfer matching, pending or malformed RPC responses, and duplicate or failed database-finalization outcomes. They do **not** contact NEAR RPC, connect to a wallet, submit a transaction, or call the deployed Supabase Edge Function. A passing suite is regression coverage for the guard rules, not proof of a live payment or an end-to-end integration test.
-
-The live negative-path smoke suite checks the deployed Edge Function's HTTP boundary using synthetic, non-existent payment data only:
+Run the deployed Edge Function negative-path suite:
 
 ```bash
 npm run test:near-verifier:live
 ```
 
-It checks method handling, content type, malformed JSON, invalid fields, JSON `null` and array bodies, and rejection of an unknown synthetic token. It does not submit a transaction, use a wallet, or exercise successful payment finalization. It requires network access to the configured Taskora Supabase function URL; override it with `TASKORA_VERIFIER_URL` when testing another environment.
+The mock suite uses fixtures and does not contact NEAR RPC, connect a wallet or submit a transaction. The live suite sends synthetic invalid data only; it does not submit a transaction or exercise successful payment finalization.
