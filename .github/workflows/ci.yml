@@ -22,6 +22,8 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: npm install
+      - name: Run NEAR verifier regression tests
+        run: npm run test:near-verifier
       - name: Type-check application
         run: npx tsc --noEmit
       - name: Build application
