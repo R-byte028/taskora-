@@ -43,7 +43,7 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 - [x] Live Edge Function negative-path smoke suite: 7 tests passed using synthetic invalid data only.
 - [x] Latest GitHub Actions run passed TypeScript checking and the Next.js production build.
 - [x] Latest Vercel preview deployment completed successfully.
-- [x] Supabase has 20 applied migrations.
+- [x] Supabase has 21 applied migrations.
 - [x] Database security review confirmed RLS on all public tables and private work-evidence storage.
 - [x] Authenticated RLS isolation check with a synthetic second-user identity returned zero rows across user-owned data tables.
 - [x] Database permission checks confirmed authenticated clients cannot directly set payment status or settlement fields.
@@ -56,8 +56,8 @@ Taskora is a crypto-first workspace for freelancers and small businesses to reco
 
 ## Remaining release checks
 
-- [ ] Browser-test the latest preview for draft creation, link sharing, recopy without re-sharing, revocation and invalid/expired-link handling.
-- [ ] Browser-test milestones, checklists, progress notes and evidence upload/download.
+- [x] Owner browser-tested the payment-link lifecycle: create/share, recopy the same active link, revoke, and confirm the old link returns “Payment request unavailable”.
+- [x] Owner reports the workspace tools are working correctly in browser testing.
 - [ ] Complete the judge walkthrough, screenshots and demo recording.
 - [ ] Keep USDC settlement and mainnet disabled unless a separate supported network/asset review is completed.
 
@@ -78,7 +78,7 @@ The Assistant is not part of the active release path. When AI Gateway is configu
 5. Open the client-facing request page and review the amount, destination and testnet disclosure.
 6. Demonstrate the completed testnet payment record and the checkout's independent verification result.
 7. Demonstrate verifier rejection rules with deterministic mock fixtures and the live negative-path smoke suite.
-8. Recopy an existing share link without replacing it, then revoke a separate link and confirm the old link is no longer usable.
+8. Recopy an existing share link without replacing it, then revoke a separate link and confirm the old link is no longer usable (owner browser-tested).
 
 ## Judge-ready acceptance checks
 
